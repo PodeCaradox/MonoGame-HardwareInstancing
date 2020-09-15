@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 
 namespace VFRZInstancing
 {
-    public class CubeMap : DrawableGameComponent
+    public class TileMap : DrawableGameComponent
     {
         #region FIELDS
 
@@ -41,14 +41,15 @@ namespace VFRZInstancing
 
         private bool changeTiles = false;
         private VertexBufferBinding[] bindings;
-        private CubeInfo[] instances;
+        private TileInfo[] instances;
 
-        //the 2 arrays that change every frame for drawing
-        private CubeInfo[] instances1;
-        private CubeInfo[] instances2;
-        struct CubeInfo
+        //the 2 arrays that change every frame for drawing(1 or 2 will be drawn)
+        private TileInfo[] instances1;
+        private TileInfo[] instances2;
+        struct TileInfo
         {
             public Vector3 World;
+               //vector 3 so later can be Textures3D be used and z is which texture.
             public Vector3 AtlasCoordinate;
         };
 
@@ -78,7 +79,7 @@ namespace VFRZInstancing
         /// <param name="game">Parent game instance.</param>
         /// <param name="sizeX">Map size on X.</param>
         /// <param name="sizeZ">Map size on Z.</param>
-        public CubeMap(Game game, int sizeX, int sizeZ) : base(game)
+        public TileMap(Game game, int sizeX, int sizeZ) : base(game)
         {
             this.sizeX = sizeX;
             this.sizeZ = sizeZ;
@@ -208,9 +209,9 @@ namespace VFRZInstancing
 
             this.InitializeInstanceVertexBuffer();
             this.GenerateCommonGeometry();
-            this.instances = new CubeInfo[this.InstanceCount];
-            this.instances1 = new CubeInfo[this.InstanceCount];
-            this.instances2 = new CubeInfo[this.InstanceCount];
+            this.instances = new TileInfo[this.InstanceCount];
+            this.instances1 = new TileInfo[this.InstanceCount];
+            this.instances2 = new TileInfo[this.InstanceCount];
             this.instanceBuffer = new DynamicVertexBuffer(this.GraphicsDevice, instanceVertexDeclaration, this.InstanceCount, BufferUsage.WriteOnly);
             this.InitializeInstances();
 
