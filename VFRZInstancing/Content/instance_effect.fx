@@ -7,9 +7,6 @@
 	#define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
-
-	Texture2DArray test;
-
 matrix WorldViewProjection;
 float2 NumberOfTextures;
 
@@ -47,7 +44,7 @@ float4 InstancingPS(InstancingVSoutput input) : COLOR0
 		if(caluclatedColor.a == 0){
 			clip(-1);
 		}
-		float4 caluclatedColor1 = test.Sample(TextureSampler, input.TexCoord);
+		
 	return caluclatedColor;
 }
 
