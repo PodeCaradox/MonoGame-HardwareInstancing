@@ -42,6 +42,8 @@ namespace VFRZInstancing
         private bool changeTiles = false;
         private VertexBufferBinding[] bindings;
         private CubeInfo[] instances;
+
+        //the 2 arrays that change every frame for drawing
         private CubeInfo[] instances1;
         private CubeInfo[] instances2;
         struct CubeInfo
@@ -52,7 +54,11 @@ namespace VFRZInstancing
 
         private Int32 sizeX;
         private Int32 sizeZ;
-
+        private float scale = 1;
+        private Vector2 positionRounded = new Vector2(0, 0);
+        KeyboardState before = Keyboard.GetState();
+        int previousMouseWheelValue = Mouse.GetState().ScrollWheelValue;
+        Matrix transform;
         #endregion
 
         #region PROPERTIES
@@ -150,7 +156,7 @@ namespace VFRZInstancing
             VertexPositionTexture[] _vertices = new VertexPositionTexture[4];
             int x = 0;
             int y = 0;
-            int scaledummy = 2;//idk why but yeah
+            int scaledummy = 2;//idk why but yeah needs to be scaled x2 or it draws wrong
             int width = 30* scaledummy;
             int height = 100 * scaledummy;
             var texelwidth = 1f;
@@ -191,8 +197,7 @@ namespace VFRZInstancing
         #endregion
 
         #region OVERRIDE METHODS
-        float scale = 1;
-        Vector2 positionRounded = new Vector2(0,0);
+
         /// <summary>
         /// Load the CubeMap effect and texture.
         /// </summary>
@@ -221,7 +226,7 @@ namespace VFRZInstancing
             base.LoadContent();
 
         }
-        KeyboardState before = Keyboard.GetState();
+
         /// <summary>
         /// Update the CubeMap logic.
         /// </summary>
@@ -231,41 +236,44 @@ namespace VFRZInstancing
        
             //InitializeInstancesTest();
             KeyboardState _ks = Keyboard.GetState();
-
-            if (_ks.IsKeyDown(Keys.Up) == true)
+            
+            var currentMouseWheelValue = Mouse.GetState().ScrollWheelValue;
+            if (_ks.IsKeyDown(Keys.Up) || _ks.IsKeyDown(Keys.W))
             {
                 positionRounded.Y -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
                 UpdateCamera();
-            }else if (_ks.IsKeyDown(Keys.Down) == true)
+            }else if (_ks.IsKeyDown(Keys.Down) || _ks.IsKeyDown(Keys.S))
             {
                 positionRounded.Y += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
                 UpdateCamera();
             }
-            if (_ks.IsKeyDown(Keys.Left) == true)
+            if (_ks.IsKeyDown(Keys.Left) || _ks.IsKeyDown(Keys.A))
             {
                 positionRounded.X -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
                 UpdateCamera();
-            }else if (_ks.IsKeyDown(Keys.Right) == true)
+            }else if (_ks.IsKeyDown(Keys.Right) || _ks.IsKeyDown(Keys.D))
             {
                 positionRounded.X += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
                 UpdateCamera();
             }
 
-            if (_ks.IsKeyDown(Keys.OemPlus) == true && before.IsKeyDown(Keys.OemPlus) == false)
+            if (currentMouseWheelValue > previousMouseWheelValue)
             {
                 scale++;
 
                 UpdateCamera();
             }
-            else if (_ks.IsKeyDown(Keys.OemMinus) == true && before.IsKeyDown(Keys.OemMinus) == false)
+            else if (currentMouseWheelValue < previousMouseWheelValue)
             {
-                scale--;
+                if(scale > 1) scale--;
 
                 UpdateCamera();
             }
+
+            previousMouseWheelValue = currentMouseWheelValue;
             before = _ks;
             ChangeTilesInArray();
 
@@ -298,7 +306,7 @@ namespace VFRZInstancing
                   Matrix.CreateScale(scale, scale, 1) *
                   Matrix.CreateTranslation(new Vector3(GraphicsDevice.Viewport.Width * 0.5f, GraphicsDevice.Viewport.Height * 0.5f, 0));
         }
-        Matrix transform;
+    
         /// <summary>
         /// Draw the cube map using one single vertexbuffer.
         /// </summary>
@@ -313,6 +321,8 @@ namespace VFRZInstancing
             Matrix _projection;
             Matrix.CreateOrthographicOffCenter(0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, 0, 0, -1, out _projection);
             this.effect.Parameters["WorldViewProjection"].SetValue(transform * _projection);
+
+            //tiles in the atlas(tile sheet) Texture(not correct number just try an error some times so it looks correct on screen)
             this.effect.Parameters["NumberOfTextures"].SetValue(new Vector2(136.53333f, 40.96f));
 
             // Set the indices in the graphics device.
@@ -324,7 +334,7 @@ namespace VFRZInstancing
             // Set the vertex buffer and draw the instanced primitives.
             this.GraphicsDevice.BlendState = BlendState.NonPremultiplied;
             this.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
-            this.GraphicsDevice.DepthStencilState = DepthStencilState.DepthRead;
+            this.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
 
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
