@@ -9,7 +9,7 @@ namespace VFRZInstancing
     {
         private readonly GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-        private CubeMap map;
+        private TileMap map;
         private SpriteFont _spriteFont;
         private FrameCounter _frameCounter;
 
@@ -17,7 +17,7 @@ namespace VFRZInstancing
         {
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
-            this.map = new CubeMap(this, 128, 128);
+            this.map = new TileMap(this, 128, 128);
             this.Components.Add(this.map);
         }
 
