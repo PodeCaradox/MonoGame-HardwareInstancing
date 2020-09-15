@@ -39,6 +39,7 @@ namespace VFRZInstancing
         private VertexBuffer geometryBuffer;
         private IndexBuffer indexBuffer;
 
+        private bool changeTiles = false;
         private VertexBufferBinding[] bindings;
         private CubeInfo[] instances;
         private CubeInfo[] instances1;
@@ -234,46 +235,46 @@ namespace VFRZInstancing
             if (_ks.IsKeyDown(Keys.Up) == true)
             {
                 positionRounded.Y -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                dummy();
+                UpdateCamera();
             }else if (_ks.IsKeyDown(Keys.Down) == true)
             {
                 positionRounded.Y += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-           
-                dummy();
+
+                UpdateCamera();
             }
             if (_ks.IsKeyDown(Keys.Left) == true)
             {
                 positionRounded.X -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                
-                dummy();
+
+                UpdateCamera();
             }else if (_ks.IsKeyDown(Keys.Right) == true)
             {
                 positionRounded.X += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-           
-                dummy();
+
+                UpdateCamera();
             }
 
             if (_ks.IsKeyDown(Keys.OemPlus) == true && before.IsKeyDown(Keys.OemPlus) == false)
             {
                 scale++;
 
-                dummy();
+                UpdateCamera();
             }
             else if (_ks.IsKeyDown(Keys.OemMinus) == true && before.IsKeyDown(Keys.OemMinus) == false)
             {
                 scale--;
 
-                dummy();
+                UpdateCamera();
             }
             before = _ks;
-            Dummy1();
+            ChangeTilesInArray();
 
         }
-        bool changeTIles = false;
-        private void Dummy1()
+        
+        private void ChangeTilesInArray()
         {
-            changeTIles = !changeTIles;
-            if (changeTIles)
+            changeTiles = !changeTiles;
+            if (changeTiles)
             {
                 for (int i = 0; i < instances.Length; i++)
                 {
@@ -291,7 +292,7 @@ namespace VFRZInstancing
             
         }
 
-        private void dummy()
+        private void UpdateCamera()
         {
             transform = Matrix.CreateTranslation(new Vector3(-positionRounded.X, -positionRounded.Y, 0)) *
                   Matrix.CreateScale(scale, scale, 1) *
