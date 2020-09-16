@@ -42,7 +42,7 @@ namespace VFRZInstancing
 
         public void DrawFps(SpriteBatch spriteBatch, SpriteFont font, Vector2 fpsDisplayPosition, Color fpsTextColor)
         {
-            spriteBatch.DrawString(font, msg, fpsDisplayPosition, fpsTextColor,0f,Vector2.Zero,1f,SpriteEffects.None,1);
+            spriteBatch.DrawString(font, msg, fpsDisplayPosition, fpsTextColor);
             frames++;
         }
     }

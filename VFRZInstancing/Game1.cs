@@ -72,8 +72,12 @@ namespace VFRZInstancing
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
-            _spriteBatch.Begin();
+
+            map.Draw(gameTime);
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, TileMap.SS_PointBorder, DepthStencilState.DepthRead, RasterizerState.CullNone, null, null);
             _frameCounter.DrawFps(_spriteBatch, _spriteFont, new Vector2(1, 1), Color.White);
+            _spriteBatch.DrawString(_spriteFont, "F1 to Change Random Textures from Spritesheet", new Vector2(1,20), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(_spriteFont, "F2 Change used Array Each Frame: "+map.ChangeArrayEachFrame, new Vector2(1, 40), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
             _spriteBatch.End();
             base.Draw(gameTime);
         }

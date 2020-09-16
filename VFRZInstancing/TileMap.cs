@@ -56,6 +56,7 @@ namespace VFRZInstancing
         private Int32 sizeX;
         private Int32 sizeZ;
         private float scale = 1;
+        public bool ChangeArrayEachFrame = false;
         private Vector2 positionRounded = new Vector2(0, 0);
         KeyboardState before = Keyboard.GetState();
         int previousMouseWheelValue = Mouse.GetState().ScrollWheelValue;
@@ -114,34 +115,23 @@ namespace VFRZInstancing
         {
             Random _randomHeight = new Random();
 
-            var dummy = _randomHeight.Next(0, 2);
+            int startPositionX = 0;
+            int startPositionY = 0;
             // Set the position for each cube.
-            for (Int32 i = 0; i < this.sizeX; ++i)
+            for (Int32 y = 0; y < this.sizeZ; y++)
             {
-                for (Int32 j = 0; j < this.sizeZ; ++j)
+                for (Int32 x = 0; x < this.sizeX; x++)
                 {
-                    this.instances[i * this.sizeX + j].World = new Vector3(i * 30, j * 16, 0.5f);
-                    this.instances[i * this.sizeX + j].AtlasCoordinate = new Vector3(_randomHeight.Next(0, 6), 0,0);
+                    var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
+                    this.instances[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y - 84, 1 - pos.Y / (this.sizeZ * 16));
+                    this.instances[y * this.sizeX + x].AtlasCoordinate = new Vector3(_randomHeight.Next(0, 28), 0,0);
                 }
+
+                startPositionY += 8;
+                startPositionX -= 15;
             }
 
-            for (Int32 i = 0; i < this.sizeX; ++i)
-            {
-                for (Int32 j = 0; j < this.sizeZ; ++j)
-                {
-                    this.instances1[i * this.sizeX + j].World = new Vector3(i * 30, j * 16, 0.5f);
-                    this.instances1[i * this.sizeX + j].AtlasCoordinate = new Vector3(_randomHeight.Next(0, 6), 0, 0);
-                }
-            }
-
-            for (Int32 i = 0; i < this.sizeX; ++i)
-            {
-                for (Int32 j = 0; j < this.sizeZ; ++j)
-                {
-                    this.instances2[i * this.sizeX + j].World = new Vector3(i * 30, j * 16, 0.5f);
-                    this.instances2[i * this.sizeX + j].AtlasCoordinate = new Vector3(_randomHeight.Next(0, 6), 0, 0);
-                }
-            }
+            CreateNewArrays();
 
             // Set the instace data to the instanceBuffer.
 
@@ -274,12 +264,61 @@ namespace VFRZInstancing
                 UpdateCamera();
             }
 
+            if (_ks.IsKeyDown(Keys.F1) && before.IsKeyUp(Keys.F1))
+            {
+                CreateNewArrays();
+                ChangeTilesInArray();
+            }
+            else if (_ks.IsKeyDown(Keys.F2) && before.IsKeyUp(Keys.F2))
+            {
+                ChangeArrayEachFrame = !ChangeArrayEachFrame;
+            }
+
             previousMouseWheelValue = currentMouseWheelValue;
             before = _ks;
-            ChangeTilesInArray();
+            if(ChangeArrayEachFrame)
+                ChangeTilesInArray();
 
         }
-        
+
+        private void CreateNewArrays()
+        {
+
+            Random _randomHeight = new Random();
+
+            int startPositionX = 0;
+            int startPositionY = 0;
+            // Set the position for each cube.
+            for (Int32 y = 0; y < this.sizeZ; y++)
+            {
+                for (Int32 x = 0; x < this.sizeX; x++)
+                {
+                    var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
+                    this.instances1[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y - 84, 1 - pos.Y / (this.sizeZ * 16));
+                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new Vector3(_randomHeight.Next(0, 28), 0, 0);
+                }
+
+                startPositionY += 8;
+                startPositionX -= 15;
+            }
+
+            startPositionX = 0;
+            startPositionY = 0;
+            // Set the position for each cube.
+            for (Int32 y = 0; y < this.sizeZ; y++)
+            {
+                for (Int32 x = 0; x < this.sizeX; x++)
+                {
+                    var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
+                    this.instances2[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y - 84, 1 - pos.Y / (this.sizeZ * 16));
+                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new Vector3(_randomHeight.Next(0, 28), 0, 0);
+                }
+
+                startPositionY += 8;
+                startPositionX -= 15;
+            }
+        }
+
         private void ChangeTilesInArray()
         {
             changeTiles = !changeTiles;
@@ -312,7 +351,7 @@ namespace VFRZInstancing
         /// Draw the cube map using one single vertexbuffer.
         /// </summary>
         /// <param name="gameTime"></param>
-        public override void Draw(GameTime gameTime)
+        public void Draw(GameTime gameTime)
         {
             // Set the effect technique and parameters
             this.effect.CurrentTechnique = effect.Techniques["Instancing"];
@@ -335,7 +374,7 @@ namespace VFRZInstancing
             // Set the vertex buffer and draw the instanced primitives.
             this.GraphicsDevice.BlendState = BlendState.NonPremultiplied;
             this.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
-            this.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+            this.GraphicsDevice.DepthStencilState = DepthStencilState.DepthRead;
 
 
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
