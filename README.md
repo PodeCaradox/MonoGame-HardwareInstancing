@@ -4,7 +4,7 @@ this project shows how monogame 3.8.0.1641 can draw many isometric tiles with mo
 
 Can be used on Linux/Windows/Mac.
 
-(the array filling can be multithreaded if you fill it up like same column size and rows/threads number, so you need in each thread the row index and column size to fill the array correctly without racecondition) ;)
+(the array filling can be multithreaded if you fill it up like same column size and rows/threads number, so you need in each thread the row index and column size to fill the array correctly without racecondition) thats the way i do it in my project, so only the DrawInstancedPrimitives is singlethreaded because opengl ;)
 ![img1](https://github.com/PodeCaradox/MonoGame-HardwareInstancing/blob/master/Images/Preview.gif)
 
 
