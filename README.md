@@ -6,5 +6,5 @@ Can be used on Linux/Windows/Mac.
 ![img1](https://github.com/PodeCaradox/MonoGame-HardwareInstancing/blob/master/Images/Preview.gif)
 
 
-It was just a sideproject for my game, so i could test it for my Game:
+It was just a sideproject for my game, so i could test and like the image shows it works just fine :)
 ![preview](https://github.com/PodeCaradox/MonoGame-HardwareInstancing/blob/master/Images/Project.JPG)
