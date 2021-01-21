@@ -17,6 +17,7 @@ namespace VFRZInstancing
         {
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
+
             this.map = new TileMap(this, 128, 128);
             this.Components.Add(this.map);
         }
@@ -55,8 +56,7 @@ namespace VFRZInstancing
             _spriteFont = Content.Load<SpriteFont>("Arial");
 
             // TODO: use this.Content to load your game content here
-    
-    
+     
         }
 
         protected override void Update(GameTime gameTime)
