@@ -56,7 +56,7 @@ namespace VFRZInstancing
 
         private int sizeX;
         private int sizeZ;
-        private Vector4[] _singleImageDimensions;
+        private Vector2[] _singleImageDimensions;
         private float _imageCount;
 
         #endregion
@@ -134,8 +134,8 @@ namespace VFRZInstancing
                 for (Int32 x = 0; x < this.sizeX; x++)
                 {
                     var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
-                    this.instances[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y - 84, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances[y * this.sizeX + x].AtlasCoordinate = new Color((byte)randomTile.Next(0, 28), (byte)0, (byte)0, (byte)31);
+                    this.instances[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
+                    this.instances[y * this.sizeX + x].AtlasCoordinate = new Color((byte)randomTile.Next(0, 28), (byte)0, (byte)0, (byte)0);
                 }
 
                 //isometric offset
@@ -222,19 +222,13 @@ namespace VFRZInstancing
             this.texture.SetData(color);
 
             //here somehow load how big a single Image is inside a Texture2D
-            _singleImageDimensions = new Vector4[textures.Count / 2 + textures.Count % 2];
+            _singleImageDimensions = new Vector2[textures.Count];
             for (int i = 0; i < _singleImageDimensions.Length; i++)
             {
-                //every time set two image dimensions (x,y first image)(z,w second image)
-                _singleImageDimensions[i] = new Vector4(30,100,0,0);
+                _singleImageDimensions[i] = new Vector2(30,100);
             }
 
-            #region if you have odd Number of Images
-            if (textures.Count % 2 == 1)
-            {
-                _singleImageDimensions[textures.Count / 2] = new Vector4(30, 100, 0, 0);
-            }
-            #endregion
+           
 
             #endregion
 
@@ -272,7 +266,9 @@ namespace VFRZInstancing
 
 
 
-
+            this.effect.Parameters["ImageSizeArray"].SetValue(_singleImageDimensions);
+            this.effect.Parameters["NumberOf2DTextures"].SetValue(_imageCount);
+            this.effect.Parameters["SpriteTexture"].SetValue(this.texture);
 
             base.LoadContent();
 
@@ -354,8 +350,8 @@ namespace VFRZInstancing
                 for (Int32 x = 0; x < this.sizeX; x++)
                 {
                     var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
-                    this.instances1[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y - 84, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new Color((byte)_randomHeight.Next(0, 28), (byte)0, (byte)0, (byte)31);
+                    this.instances1[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
+                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new Color((byte)_randomHeight.Next(0, 28), (byte)0, (byte)0, (byte)0);
                 }
 
                 startPositionY += 8;
@@ -370,8 +366,8 @@ namespace VFRZInstancing
                 for (Int32 x = 0; x < this.sizeX; x++)
                 {
                     var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
-                    this.instances2[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y - 84, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new Color((byte)_randomHeight.Next(0, 28), (byte)0, (byte)0, (byte)31);
+                    this.instances2[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
+                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new Color((byte)_randomHeight.Next(0, 28), (byte)0, (byte)0, (byte)0);
                 }
 
                 startPositionY += 8;
@@ -419,9 +415,7 @@ namespace VFRZInstancing
 
 
             this.effect.Parameters["WorldViewProjection"].SetValue(_transform * _projection);
-            this.effect.Parameters["ImageSizeArray"].SetValue(_singleImageDimensions);
-            this.effect.Parameters["NumberOf2DTextures"].SetValue(_imageCount);
-            this.effect.Parameters["SpriteTexture"].SetValue(this.texture);
+
 
             // Set the indices in the graphics device.
             this.GraphicsDevice.Indices = indexBuffer;
@@ -436,7 +430,7 @@ namespace VFRZInstancing
 
 
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
-            this.GraphicsDevice.Textures[0] = texture;
+            
             this.GraphicsDevice.SetVertexBuffers(bindings);
             this.GraphicsDevice.DrawInstancedPrimitives(PrimitiveType.TriangleList, 0, 0, 2, InstanceCount);
 

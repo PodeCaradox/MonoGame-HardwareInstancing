@@ -17,9 +17,9 @@ namespace VFRZInstancing.Instancing
         (
             new VertexElement[]{
                 new VertexElement(0, VertexElementFormat.Color,
-                                     VertexElementUsage.Color, 2),
+                                     VertexElementUsage.Color, 0),
                 new VertexElement(4, VertexElementFormat.Color,
-                                      VertexElementUsage.Color, 3)}
+                                      VertexElementUsage.Color, 1)}
         );
 
         VertexDeclaration IVertexType.VertexDeclaration

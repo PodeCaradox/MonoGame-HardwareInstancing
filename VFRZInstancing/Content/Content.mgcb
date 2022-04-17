@@ -5,8 +5,8 @@
 /intermediateDir:obj/$(Platform)
 /platform:DesktopGL
 /config:
-/profile:Reach
-/compress:False
+/profile:HiDef
+/compress:True
 
 #-------------------------------- References --------------------------------#
 
