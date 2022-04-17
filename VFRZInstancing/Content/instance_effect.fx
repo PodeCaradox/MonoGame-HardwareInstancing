@@ -40,7 +40,7 @@ cbuffer ShaderData : register(b0)
 
 
 
-InstancingVSoutput InstancingVS(StaticVSinput input, DynamicVSinput input1)
+InstancingVSoutput InstancingVS(in StaticVSinput input, in DynamicVSinput input1)
 {
 	InstancingVSoutput output;
 	//Colors * 255 because its between 0 - 1
@@ -59,7 +59,7 @@ InstancingVSoutput InstancingVS(StaticVSinput input, DynamicVSinput input1)
 	float2 NumberOfTextures = float2(2048,2048) / float2(imageSize.x,imageSize.y); // all Images are 2048 x 2048 because 3DTexture doesnt support more and give blackscreen if bigger, maybe because old opengl 3_0
 	
 
-	input.Position.xy = input.Position.xy * imageSize;
+	input.Position.xy = input.Position.xy * imageSize - float2(imageSize.x / 2, imageSize.y);;
 	
 	//calculate position with camera
 	float4 pos = float4(input.Position.xyz + input1.InstanceTransform,1);

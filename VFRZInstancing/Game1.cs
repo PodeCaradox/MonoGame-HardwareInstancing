@@ -78,6 +78,8 @@ namespace VFRZInstancing
             _frameCounter.DrawFps(_spriteBatch, _spriteFont, new Vector2(1, 1), Color.White);
             _spriteBatch.DrawString(_spriteFont, "F1 to Change Random Textures from Spritesheet", new Vector2(1,20), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
             _spriteBatch.DrawString(_spriteFont, "F2 Change used Array Each Frame: "+map.ChangeArrayEachFrame, new Vector2(1, 40), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(_spriteFont, "F3 Change PixelWidth, Currently: " + ((map.ImageWidth32Pixel? "32 Pixel":"30 Pixel")), new Vector2(1, 60), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+
             _spriteBatch.End();
             base.Draw(gameTime);
         }

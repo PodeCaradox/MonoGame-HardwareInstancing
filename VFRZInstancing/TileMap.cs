@@ -63,7 +63,7 @@ namespace VFRZInstancing
 
         #region CameraData
 
-        private Vector2 _cameraPosition = new Vector2(0, 1500);
+        private Vector2 _cameraPosition = new Vector2(0, 1000);
         private float scale = 1;
         private Matrix _transform;
         private Matrix _projection;
@@ -73,6 +73,7 @@ namespace VFRZInstancing
         #region Testing
 
         private bool changeTiles = false;
+        private bool imageWidth32Pixel = false;
         //the 2 arrays that change every frame for drawing(1 or 2 will be drawn)
         private Instances[] instances1;
         private Instances[] instances2;
@@ -95,6 +96,8 @@ namespace VFRZInstancing
         {
             get { return this.sizeX * this.sizeZ; }
         }
+
+        public bool ImageWidth32Pixel { get => imageWidth32Pixel; set => imageWidth32Pixel = value; }
 
         #endregion
 
@@ -202,7 +205,8 @@ namespace VFRZInstancing
             this.effect = this.Game.Content.Load<Effect>("instance_effect");
             var textures = new List<Texture2D>();
             //Image need to be 2048 x 2048
-            textures.Add(this.Game.Content.Load<Texture2D>("tiles"));
+            textures.Add(this.Game.Content.Load<Texture2D>("tiles30x64"));
+            textures.Add(this.Game.Content.Load<Texture2D>("tiles32x64"));
 
             #region Init3DTexture
             //max 2048 otherwise it draws black maybe opengl limitation
@@ -223,10 +227,9 @@ namespace VFRZInstancing
 
             //here somehow load how big a single Image is inside a Texture2D
             _singleImageDimensions = new Vector2[textures.Count];
-            for (int i = 0; i < _singleImageDimensions.Length; i++)
-            {
-                _singleImageDimensions[i] = new Vector2(30,100);
-            }
+            _singleImageDimensions[0] = new Vector2(30, 64);
+            _singleImageDimensions[1] = new Vector2(32,64);
+            
 
            
 
@@ -328,6 +331,14 @@ namespace VFRZInstancing
             else if (_ks.IsKeyDown(Keys.F2) && before.IsKeyUp(Keys.F2))
             {
                 ChangeArrayEachFrame = !ChangeArrayEachFrame;
+            }
+            if (_ks.IsKeyDown(Keys.F3) && before.IsKeyUp(Keys.F3))
+            {
+                imageWidth32Pixel = !imageWidth32Pixel;
+                for (int i = 0; i < instances.Length; i++)
+                {
+                    instances[i].AtlasCoordinate.A = (byte)((imageWidth32Pixel)?1:0);
+                }
             }
 
             previousMouseWheelValue = currentMouseWheelValue;
