@@ -34,6 +34,7 @@ namespace VFRZInstancing
 
             _graphics.ApplyChanges();
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+            
             this.IsMouseVisible = true;
             this.IsFixedTimeStep = false;
             this.TargetElapsedTime = TimeSpan.FromMilliseconds(16);

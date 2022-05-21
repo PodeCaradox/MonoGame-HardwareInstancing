@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -11,15 +12,13 @@ namespace VFRZInstancing.Instancing
     public struct GeometryData : IVertexType
     {
         [FieldOffset(0)] public Color World;
-        [FieldOffset(4)] public Color AtlasCoordinate;
 
         public static readonly VertexDeclaration VertexDeclaration = new VertexDeclaration
         (
+
             new VertexElement[]{
                 new VertexElement(0, VertexElementFormat.Color,
-                                     VertexElementUsage.Color, 0),
-                new VertexElement(4, VertexElementFormat.Color,
-                                      VertexElementUsage.Color, 1)}
+                                     VertexElementUsage.Color, 0) }
         );
 
         VertexDeclaration IVertexType.VertexDeclaration

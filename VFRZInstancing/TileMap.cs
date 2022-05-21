@@ -36,9 +36,7 @@ namespace VFRZInstancing
 
         #region Buffers
 
-        private VertexDeclaration instanceVertexDeclaration;
-
-        private VertexBuffer instanceBuffer;
+        private StructuredBuffer instanceBuffer;
         private VertexBuffer geometryBuffer;
         private IndexBuffer indexBuffer;
 
@@ -46,9 +44,8 @@ namespace VFRZInstancing
 
         #region Buffer Arrays
 
-        private VertexBufferBinding[] bindings;
         private Instances[] instances;
-
+        private int instancesVertexBuffer;
         #endregion
 
 
@@ -113,15 +110,21 @@ namespace VFRZInstancing
         {
             this.sizeX = sizeX;
             this.sizeZ = sizeZ;
+            _raster.MultiSampleAntiAlias = false;
+            _raster.ScissorTestEnable = false;
+            _raster.FillMode = FillMode.Solid;
+            _raster.CullMode = CullMode.None;
+            _raster.DepthClipEnable = false;
+            this.instancesVertexBuffer = sizeX * sizeZ;
         }
 
         #endregion
 
         #region METHODS
 
-   
 
 
+        private RasterizerState _raster = new RasterizerState();
         /// <summary>
         /// Initialize all the cube instance. (sizeX * sizeZ)
         /// </summary>
@@ -138,7 +141,7 @@ namespace VFRZInstancing
                 {
                     var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
                     this.instances[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances[y * this.sizeX + x].AtlasCoordinate = new Color((byte)randomTile.Next(0, 28), (byte)0, (byte)0, (byte)0);
+                    this.instances[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0); 
                 }
 
                 //isometric offset
@@ -159,32 +162,35 @@ namespace VFRZInstancing
         /// </summary>
         private void GenerateCommonGeometry()
         {
-            GeometryData[] _vertices = new GeometryData[4];
+            GeometryData[] _vertices = new GeometryData[4 * this.instancesVertexBuffer];
 
 
             #region filling vertices
-            _vertices[0].World = new Color((byte)0, (byte)0, (byte)0, (byte)0);             //float3
-            _vertices[0].AtlasCoordinate = new Color((byte)0, (byte)0, (byte)0, (byte)0);   //flaot2
-            _vertices[1].World = new Color((byte)255, (byte)0, (byte)0, (byte)0);
-            _vertices[1].AtlasCoordinate = new Color((byte)255, (byte)0, (byte)0, (byte)0);
-            _vertices[2].World = new Color((byte)0, (byte)255, (byte)0, (byte)0);
-            _vertices[2].AtlasCoordinate = new Color((byte)0, (byte)255, (byte)0, (byte)0);
-            _vertices[3].World = new Color((byte)255, (byte)255, (byte)0, (byte)0);
-            _vertices[3].AtlasCoordinate = new Color((byte)255, (byte)255, (byte)0, (byte)0);
+            for (int i = 0; i < this.instancesVertexBuffer; i++)
+            {
+
+                _vertices[i * 4 + 0].World = new Color((byte)0, (byte)0, (byte)0, (byte)0);
+                _vertices[i * 4 + 1].World = new Color((byte)255, (byte)0, (byte)0, (byte)0);
+                _vertices[i * 4 + 2].World = new Color((byte)0, (byte)255, (byte)0, (byte)0);
+                _vertices[i * 4 + 3].World = new Color((byte)255, (byte)255, (byte)0, (byte)0);
+              
+            }
+
 
 
             #endregion
 
-            this.geometryBuffer = new VertexBuffer(this.GraphicsDevice, GeometryData.VertexDeclaration,
-                                              4, BufferUsage.WriteOnly);
+            this.geometryBuffer = new VertexBuffer(this.GraphicsDevice, typeof(GeometryData), _vertices.Length, BufferUsage.WriteOnly);
             this.geometryBuffer.SetData(_vertices);
 
             #region filling indices
+            short[] _indices = new short[6 * this.instancesVertexBuffer];
+            for (int i = 0; i < this.instancesVertexBuffer; i++)
+            {
 
-            short[] _indices = new short[6];
-            _indices[0] = 0; _indices[1] = 1; _indices[2] = 2;
-            _indices[3] = 1; _indices[4] = 3; _indices[5] = 2;
-
+                _indices[i * 6 + 0] = (short)(0 + i * 4); _indices[i * 6 + 1] = (short)(1 + i * 4); _indices[i * 6 + 2] = (short)(2 + i * 4);
+                _indices[i * 6 + 3] = (short)(1 + i * 4); _indices[i * 6 + 4] = (short)(3 + i * 4); _indices[i * 6 + 5] = (short)(2 + i * 4);
+            }
 
 
             #endregion
@@ -228,10 +234,10 @@ namespace VFRZInstancing
             //here somehow load how big a single Image is inside a Texture2D
             _singleImageDimensions = new Vector2[textures.Count];
             _singleImageDimensions[0] = new Vector2(30, 64);
-            _singleImageDimensions[1] = new Vector2(32,64);
-            
+            _singleImageDimensions[1] = new Vector2(32, 64);
 
-           
+
+
 
             #endregion
 
@@ -247,13 +253,10 @@ namespace VFRZInstancing
             this.instances2 = new Instances[this.InstanceCount];
 
             //the instances can change so we have a dynamic buffer
-            this.instanceBuffer = new DynamicVertexBuffer(this.GraphicsDevice, Instances.VertexDeclaration, this.InstanceCount, BufferUsage.WriteOnly);
+            this.instanceBuffer = new StructuredBuffer(this.GraphicsDevice, typeof(Instances), this.InstanceCount, BufferUsage.WriteOnly, ShaderAccess.Read);
             this.InitializeInstances();
+            instanceBuffer.SetData(this.instances);
 
-            // Creates the binding between the geometry and the instances.
-            this.bindings = new VertexBufferBinding[2];
-            this.bindings[0] = new VertexBufferBinding(geometryBuffer);
-            this.bindings[1] = new VertexBufferBinding(instanceBuffer, 0, 1);
 
             #endregion
 
@@ -283,16 +286,17 @@ namespace VFRZInstancing
         /// <param name="gameTime"></param>
         public override void Update(GameTime gameTime)
         {
-       
+
             //InitializeInstancesTest();
             KeyboardState _ks = Keyboard.GetState();
-            
+
             var currentMouseWheelValue = Mouse.GetState().ScrollWheelValue;
             if (_ks.IsKeyDown(Keys.Up) || _ks.IsKeyDown(Keys.W))
             {
                 _cameraPosition.Y -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
                 UpdateCamera();
-            }else if (_ks.IsKeyDown(Keys.Down) || _ks.IsKeyDown(Keys.S))
+            }
+            else if (_ks.IsKeyDown(Keys.Down) || _ks.IsKeyDown(Keys.S))
             {
                 _cameraPosition.Y += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
@@ -303,7 +307,8 @@ namespace VFRZInstancing
                 _cameraPosition.X -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
                 UpdateCamera();
-            }else if (_ks.IsKeyDown(Keys.Right) || _ks.IsKeyDown(Keys.D))
+            }
+            else if (_ks.IsKeyDown(Keys.Right) || _ks.IsKeyDown(Keys.D))
             {
                 _cameraPosition.X += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
@@ -318,7 +323,7 @@ namespace VFRZInstancing
             }
             else if (currentMouseWheelValue < previousMouseWheelValue)
             {
-                if(scale > 0.4f) scale -= 0.2f;
+                if (scale > 0.4f) scale -= 0.2f;
 
                 UpdateCamera();
             }
@@ -337,13 +342,13 @@ namespace VFRZInstancing
                 imageWidth32Pixel = !imageWidth32Pixel;
                 for (int i = 0; i < instances.Length; i++)
                 {
-                    instances[i].AtlasCoordinate.A = (byte)((imageWidth32Pixel)?1:0);
+                    instances[i].AtlasCoordinate.Index = (byte)((imageWidth32Pixel) ? 1 : 0);
                 }
             }
 
             previousMouseWheelValue = currentMouseWheelValue;
             before = _ks;
-            if(ChangeArrayEachFrame)
+            if (ChangeArrayEachFrame)
                 ChangeTilesInArray();
 
         }
@@ -351,7 +356,7 @@ namespace VFRZInstancing
         private void CreateNewArrays()
         {
 
-            Random _randomHeight = new Random();
+            Random randomTile = new Random();
 
             int startPositionX = 0;
             int startPositionY = 0;
@@ -362,7 +367,7 @@ namespace VFRZInstancing
                 {
                     var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
                     this.instances1[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new Color((byte)_randomHeight.Next(0, 28), (byte)0, (byte)0, (byte)0);
+                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), 0, 0);
                 }
 
                 startPositionY += 8;
@@ -378,7 +383,7 @@ namespace VFRZInstancing
                 {
                     var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
                     this.instances2[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new Color((byte)_randomHeight.Next(0, 28), (byte)0, (byte)0, (byte)0);
+                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), 0, 0);
                 }
 
                 startPositionY += 8;
@@ -413,7 +418,7 @@ namespace VFRZInstancing
                   Matrix.CreateScale(scale, scale, 1) *
                   Matrix.CreateTranslation(new Vector3(GraphicsDevice.Viewport.Width * 0.5f, GraphicsDevice.Viewport.Height * 0.5f, 0));
         }
-    
+
         /// <summary>
         /// Draw the cube map using one single vertexbuffer.
         /// </summary>
@@ -426,7 +431,7 @@ namespace VFRZInstancing
 
 
             this.effect.Parameters["WorldViewProjection"].SetValue(_transform * _projection);
-
+            this.effect.Parameters["TileBuffer"].SetValue(instanceBuffer);
 
             // Set the indices in the graphics device.
             this.GraphicsDevice.Indices = indexBuffer;
@@ -436,17 +441,17 @@ namespace VFRZInstancing
 
             // Set the vertex buffer and draw the instanced primitives.
             this.GraphicsDevice.BlendState = BlendState.NonPremultiplied;
-            this.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
-            this.GraphicsDevice.DepthStencilState = DepthStencilState.DepthRead;
+            this.GraphicsDevice.RasterizerState = _raster;
+            this.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
 
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
-            
-            this.GraphicsDevice.SetVertexBuffers(bindings);
-            this.GraphicsDevice.DrawInstancedPrimitives(PrimitiveType.TriangleList, 0, 0, 2, InstanceCount);
 
-         
+            this.GraphicsDevice.SetVertexBuffer(geometryBuffer);
+            this.GraphicsDevice.DrawInstancedPrimitives(PrimitiveType.TriangleList, 0, 0, 2 * this.instancesVertexBuffer, 1);
+
+
         }
-       #endregion
+        #endregion
     }
 }

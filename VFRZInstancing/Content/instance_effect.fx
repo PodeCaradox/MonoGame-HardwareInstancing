@@ -1,5 +1,5 @@
-﻿#define VS_SHADERMODEL vs_4_0
-#define PS_SHADERMODEL ps_4_0
+﻿#define VS_SHADERMODEL vs_5_0
+#define PS_SHADERMODEL ps_5_0
 	
 	
 //Number of Textures inside of the Texture3D
@@ -16,14 +16,14 @@ sampler SpriteTextureSampler : register(s0) = sampler_state
 struct StaticVSinput
 {
 	float4 Position : COLOR0; // only xyz are needed
-	float4 TexCoord : COLOR1;//only x/y is needed
+	uint VertexID : SV_VertexID;
 };
 
 //16 bytes in total
 struct DynamicVSinput
 {
-	float3 InstanceTransform : POSITION0;
-	float4 AtlasCoord : COLOR2;//x/y for column/row z for image index and w for ShadowColor
+	float3 InstanceTransform;
+	uint AtlasCoord;//x/y for column/row z for image index
 };
 
 //16 byte + 12 byte = 28 bytes
@@ -31,6 +31,7 @@ struct InstancingVSoutput
 {
 	float4 Position : SV_POSITION;
 	float3 TexCoord : TEXCOORD0;
+	float4 ColorD : COLOR0; // only xyz are needed
 };
 
 cbuffer ShaderData : register(b0)
@@ -38,18 +39,18 @@ cbuffer ShaderData : register(b0)
     float2 ImageSizeArray[256];
 };
 
+StructuredBuffer<DynamicVSinput> TileBuffer;
 
 
-InstancingVSoutput InstancingVS(in StaticVSinput input, in DynamicVSinput input1)
+InstancingVSoutput InstancingVS(in StaticVSinput input)
 {
+	uint tileID = input.VertexID/4;
+	DynamicVSinput input1 = TileBuffer[tileID];
 	InstancingVSoutput output;
-	//Colors * 255 because its between 0 - 1
-	float4 atlasCoordinate = input1.AtlasCoord * 255;
+	uint3 atlasCoordinate = uint3((input1.AtlasCoord & 0b00000000000000000000000011111111) >> 24,(input1.AtlasCoord & 0b00000000111111110000000000000000) >> 16, input1.AtlasCoord & 0b11111111111111110000000000000000);
 	
 	//actual Image Index
-	float index = atlasCoordinate.z * 256 + atlasCoordinate.w;
-	
-
+	uint index = atlasCoordinate.z;
 	//get texture Size in the atlas
 	float2 imageSize= ImageSizeArray[index];
 	
@@ -59,17 +60,16 @@ InstancingVSoutput InstancingVS(in StaticVSinput input, in DynamicVSinput input1
 	float2 NumberOfTextures = float2(2048,2048) / float2(imageSize.x,imageSize.y); // all Images are 2048 x 2048 because 3DTexture doesnt support more and give blackscreen if bigger, maybe because old opengl 3_0
 	
 
-	input.Position.xy = input.Position.xy * imageSize - float2(imageSize.x / 2, imageSize.y);;
+	float2 position = input.Position.xy * imageSize - float2(imageSize.x / 2, imageSize.y);;
 	
 	//calculate position with camera
-	float4 pos = float4(input.Position.xyz + input1.InstanceTransform,1);
+	float4 pos = float4(position.xy + input1.InstanceTransform .xy,input1.InstanceTransform.z,1);//+ float2(input.InstanceID/6*100.0f,0)
 	pos = mul(pos, WorldViewProjection);
 	
-
-
+	
 	output.Position = pos;
-	output.TexCoord = float3((input.TexCoord.x / NumberOfTextures.x) + (1.0f / NumberOfTextures.x * atlasCoordinate.x),
-							 (input.TexCoord.y / NumberOfTextures.y) + (1.0f / NumberOfTextures.y * atlasCoordinate.y), index/NumberOf2DTextures + 0.1f / NumberOf2DTextures);//+0.1f / NumberOf2DTextures because texture3d want some between value?
+	output.TexCoord = float3((input.Position.x / NumberOfTextures.x) + (1.0f / NumberOfTextures.x * asfloat(atlasCoordinate.x * 255)),
+							 (input.Position.y / NumberOfTextures.y) + (1.0f / NumberOfTextures.y * atlasCoordinate.y), index/NumberOf2DTextures + 0.1f / NumberOf2DTextures);//+0.1f / NumberOf2DTextures because texture3d want some between value?
 	
 	
 	return output;
@@ -83,8 +83,6 @@ float4 InstancingPS(InstancingVSoutput input) : SV_TARGET
 	//if(caluclatedColor.a == 0){
 	//	clip(-1);
 	//}
-	
-	
 	return caluclatedColor;
 }
 

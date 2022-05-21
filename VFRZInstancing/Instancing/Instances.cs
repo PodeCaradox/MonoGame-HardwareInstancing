@@ -11,24 +11,11 @@ namespace VFRZInstancing.Instancing
     /// Instances for Drawing
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    public struct Instances : IVertexType
+    public struct Instances
     {
         [FieldOffset(0)] public Vector3 World;
-        //r = xAtlasCoordinate, g = yAtlasCoordinate, b = ImageIndex,a = shadowColor + ImageIndex
-        [FieldOffset(12)] public Color AtlasCoordinate;
+        [FieldOffset(12)] public ImageRenderData AtlasCoordinate;
 
-        public static readonly VertexDeclaration VertexDeclaration = new VertexDeclaration
-        (
-            new VertexElement[]{
-                new VertexElement(0, VertexElementFormat.Vector3,
-                                     VertexElementUsage.Position, 0),
-                new VertexElement(12, VertexElementFormat.Color,
-                                      VertexElementUsage.Color, 2)}
-        );
-
-        VertexDeclaration IVertexType.VertexDeclaration
-        {
-            get { return VertexDeclaration; }
-        }
+      
     }
 }
