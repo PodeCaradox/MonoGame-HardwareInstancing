@@ -38,7 +38,6 @@ namespace VFRZInstancing
 
         private StructuredBuffer instanceBuffer;
         private VertexBuffer geometryBuffer;
-        private IndexBuffer indexBuffer;
 
         #endregion
 
@@ -111,7 +110,7 @@ namespace VFRZInstancing
             this.sizeX = sizeX;
             this.sizeZ = sizeZ;
             _raster.MultiSampleAntiAlias = false;
-            _raster.ScissorTestEnable = false;
+            _raster.ScissorTestEnable = true;
             _raster.FillMode = FillMode.Solid;
             _raster.CullMode = CullMode.None;
             _raster.DepthClipEnable = false;
@@ -162,18 +161,20 @@ namespace VFRZInstancing
         /// </summary>
         private void GenerateCommonGeometry()
         {
-            GeometryData[] _vertices = new GeometryData[4 * this.instancesVertexBuffer];
+            GeometryData[] _vertices = new GeometryData[6 * this.instancesVertexBuffer];
 
 
             #region filling vertices
             for (int i = 0; i < this.instancesVertexBuffer; i++)
             {
 
-                _vertices[i * 4 + 0].World = new Color((byte)0, (byte)0, (byte)0, (byte)0);
-                _vertices[i * 4 + 1].World = new Color((byte)255, (byte)0, (byte)0, (byte)0);
-                _vertices[i * 4 + 2].World = new Color((byte)0, (byte)255, (byte)0, (byte)0);
-                _vertices[i * 4 + 3].World = new Color((byte)255, (byte)255, (byte)0, (byte)0);
-              
+                _vertices[i * 6 + 0].World = new Color((byte)0, (byte)0, (byte)0, (byte)0);
+                _vertices[i * 6 + 1].World = new Color((byte)255, (byte)0, (byte)0, (byte)0);
+                _vertices[i * 6 + 2].World = new Color((byte)0, (byte)255, (byte)0, (byte)0);
+                _vertices[i * 6 + 3].World = new Color((byte)255, (byte)0, (byte)0, (byte)0);
+                _vertices[i * 6 + 4].World = new Color((byte)255, (byte)255, (byte)0, (byte)0);
+                _vertices[i * 6 + 5].World = new Color((byte)0, (byte)255, (byte)0, (byte)0);
+
             }
 
 
@@ -183,20 +184,6 @@ namespace VFRZInstancing
             this.geometryBuffer = new VertexBuffer(this.GraphicsDevice, typeof(GeometryData), _vertices.Length, BufferUsage.WriteOnly);
             this.geometryBuffer.SetData(_vertices);
 
-            #region filling indices
-            short[] _indices = new short[6 * this.instancesVertexBuffer];
-            for (int i = 0; i < this.instancesVertexBuffer; i++)
-            {
-
-                _indices[i * 6 + 0] = (short)(0 + i * 4); _indices[i * 6 + 1] = (short)(1 + i * 4); _indices[i * 6 + 2] = (short)(2 + i * 4);
-                _indices[i * 6 + 3] = (short)(1 + i * 4); _indices[i * 6 + 4] = (short)(3 + i * 4); _indices[i * 6 + 5] = (short)(2 + i * 4);
-            }
-
-
-            #endregion
-
-            this.indexBuffer = new IndexBuffer(this.GraphicsDevice, typeof(short), _indices.Length, BufferUsage.WriteOnly);
-            this.indexBuffer.SetData(_indices);
         }
 
         #endregion
@@ -365,13 +352,13 @@ namespace VFRZInstancing
             {
                 for (Int32 x = 0; x < this.sizeX; x++)
                 {
-                    var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
+                    var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
                     this.instances1[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), 0, 0);
+                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0);
                 }
 
                 startPositionY += 8;
-                startPositionX -= 15;
+                startPositionX -= 16;
             }
 
             startPositionX = 0;
@@ -381,13 +368,13 @@ namespace VFRZInstancing
             {
                 for (Int32 x = 0; x < this.sizeX; x++)
                 {
-                    var pos = new Vector2(x * 15 + startPositionX, x * 8 + startPositionY);
+                    var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
                     this.instances2[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), 0, 0);
+                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0);
                 }
 
                 startPositionY += 8;
-                startPositionX -= 15;
+                startPositionX -= 16;
             }
         }
 
@@ -434,7 +421,6 @@ namespace VFRZInstancing
             this.effect.Parameters["TileBuffer"].SetValue(instanceBuffer);
 
             // Set the indices in the graphics device.
-            this.GraphicsDevice.Indices = indexBuffer;
 
             // Apply the current technique pass.
             this.effect.CurrentTechnique.Passes[0].Apply();
@@ -448,8 +434,7 @@ namespace VFRZInstancing
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
 
             this.GraphicsDevice.SetVertexBuffer(geometryBuffer);
-            this.GraphicsDevice.DrawInstancedPrimitives(PrimitiveType.TriangleList, 0, 0, 2 * this.instancesVertexBuffer, 1);
-
+            this.GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2 * this.instancesVertexBuffer);
 
         }
         #endregion

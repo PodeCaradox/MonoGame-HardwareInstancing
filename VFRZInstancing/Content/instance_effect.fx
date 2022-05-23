@@ -44,7 +44,7 @@ StructuredBuffer<DynamicVSinput> TileBuffer;
 
 InstancingVSoutput InstancingVS(in StaticVSinput input)
 {
-	uint tileID = input.VertexID/4;
+	uint tileID = input.VertexID/6;
 	DynamicVSinput input1 = TileBuffer[tileID];
 	InstancingVSoutput output;
 	uint3 atlasCoordinate = uint3((input1.AtlasCoord & 0b00000000000000000000000011111111) >> 24,(input1.AtlasCoord & 0b00000000111111110000000000000000) >> 16, input1.AtlasCoord & 0b11111111111111110000000000000000);
@@ -63,7 +63,7 @@ InstancingVSoutput InstancingVS(in StaticVSinput input)
 	float2 position = input.Position.xy * imageSize - float2(imageSize.x / 2, imageSize.y);;
 	
 	//calculate position with camera
-	float4 pos = float4(position.xy + input1.InstanceTransform .xy,input1.InstanceTransform.z,1);//+ float2(input.InstanceID/6*100.0f,0)
+	float4 pos = float4(position.xy + input1.InstanceTransform .xy,input1.InstanceTransform.z,1);
 	pos = mul(pos, WorldViewProjection);
 	
 	
