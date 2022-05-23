@@ -434,6 +434,7 @@ namespace VFRZInstancing
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
 
             this.GraphicsDevice.SetVertexBuffer(geometryBuffer);
+            //dont use DrawInsttanced its to slow for Sprintes insancing see: https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau
             this.GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2 * this.instancesVertexBuffer);
 
         }
