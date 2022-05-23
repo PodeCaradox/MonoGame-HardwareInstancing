@@ -110,7 +110,7 @@ namespace VFRZInstancing
             this.sizeX = sizeX;
             this.sizeZ = sizeZ;
             _raster.MultiSampleAntiAlias = false;
-            _raster.ScissorTestEnable = true;
+            _raster.ScissorTestEnable = false;
             _raster.FillMode = FillMode.Solid;
             _raster.CullMode = CullMode.None;
             _raster.DepthClipEnable = false;
@@ -140,7 +140,7 @@ namespace VFRZInstancing
                 {
                     var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
                     this.instances[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0); 
+                    this.instances[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0);
                 }
 
                 //isometric offset
@@ -430,7 +430,7 @@ namespace VFRZInstancing
             this.GraphicsDevice.RasterizerState = _raster;
             this.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
-
+            //this.instanceBuffer.SetData(this.instances);
             this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
 
             this.GraphicsDevice.SetVertexBuffer(geometryBuffer);

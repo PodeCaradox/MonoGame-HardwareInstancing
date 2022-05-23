@@ -47,8 +47,8 @@ InstancingVSoutput InstancingVS(in StaticVSinput input)
 	uint tileID = input.VertexID/6;
 	DynamicVSinput input1 = TileBuffer[tileID];
 	InstancingVSoutput output;
-	uint3 atlasCoordinate = uint3((input1.AtlasCoord & 0b00000000000000000000000011111111) >> 24,(input1.AtlasCoord & 0b00000000111111110000000000000000) >> 16, input1.AtlasCoord & 0b11111111111111110000000000000000);
-	
+	uint3 atlasCoordinate = uint3((input1.AtlasCoord & 0x000000ff),(input1.AtlasCoord & 0x0000ff00) >> 8, input1.AtlasCoord >> 16);
+
 	//actual Image Index
 	uint index = atlasCoordinate.z;
 	//get texture Size in the atlas
@@ -68,7 +68,7 @@ InstancingVSoutput InstancingVS(in StaticVSinput input)
 	
 	
 	output.Position = pos;
-	output.TexCoord = float3((input.Position.x / NumberOfTextures.x) + (1.0f / NumberOfTextures.x * asfloat(atlasCoordinate.x * 255)),
+	output.TexCoord = float3((input.Position.x / NumberOfTextures.x) + (1.0f / NumberOfTextures.x * atlasCoordinate.x),
 							 (input.Position.y / NumberOfTextures.y) + (1.0f / NumberOfTextures.y * atlasCoordinate.y), index/NumberOf2DTextures + 0.1f / NumberOf2DTextures);//+0.1f / NumberOf2DTextures because texture3d want some between value?
 	
 	
