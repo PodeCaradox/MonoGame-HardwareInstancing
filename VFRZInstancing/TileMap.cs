@@ -110,7 +110,7 @@ namespace VFRZInstancing
             this.sizeX = sizeX;
             this.sizeZ = sizeZ;
             _raster.MultiSampleAntiAlias = false;
-            _raster.ScissorTestEnable = false;
+            _raster.ScissorTestEnable = true;
             _raster.FillMode = FillMode.Solid;
             _raster.CullMode = CullMode.None;
             _raster.DepthClipEnable = false;
