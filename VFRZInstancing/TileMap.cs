@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VFRZInstancing.Instancing;
-
+using VFRZInstancing.HelperObjects;
 /*--------------------------------------------------------
  * CubeMap.cs
  * 
@@ -29,59 +29,36 @@ namespace VFRZInstancing
         #region FIELDS
 
         public static SamplerState SS_PointBorder = new SamplerState() { Filter = TextureFilter.Point, AddressU = TextureAddressMode.Clamp, AddressV = TextureAddressMode.Clamp };
-
-
+        private Camera _camera;
         private Texture3D texture;
         private Effect effect;
-
+        Random _randomTile = new Random();
         #region Buffers
 
         private StructuredBuffer instanceBuffer;
         private VertexBuffer geometryBuffer;
-
-        #endregion
-
-        #region Buffer Arrays
-
         private Instances[] instances;
         private int instancesVertexBuffer;
-        #endregion
 
+        #endregion
 
         #region TileMapData
 
-        private int sizeX;
-        private int sizeZ;
+        private Point _size;
+        private Point _tileSize = new Point(32,16);
+        private Point _tileSizehalf = new Point(16, 8);
         private Vector2[] _singleImageDimensions;
         private float _imageCount;
 
         #endregion
 
-        #region CameraData
-
-        private Vector2 _cameraPosition = new Vector2(0, 1000);
-        private float scale = 1;
-        private Matrix _transform;
-        private Matrix _projection;
-
-        #endregion
 
         #region Testing
 
-        private bool changeTiles = false;
         private bool imageWidth32Pixel = false;
-        //the 2 arrays that change every frame for drawing(1 or 2 will be drawn)
-        private Instances[] instances1;
-        private Instances[] instances2;
         public bool ChangeArrayEachFrame = false;
-        private KeyboardState before = Keyboard.GetState();
-        private int previousMouseWheelValue = Mouse.GetState().ScrollWheelValue;
 
         #endregion
-
-
-
-
 
 
         #endregion
@@ -90,7 +67,7 @@ namespace VFRZInstancing
 
         public int InstanceCount
         {
-            get { return this.sizeX * this.sizeZ; }
+            get { return this._size.X * this._size.Y; }
         }
 
         public bool ImageWidth32Pixel { get => imageWidth32Pixel; set => imageWidth32Pixel = value; }
@@ -107,14 +84,16 @@ namespace VFRZInstancing
         /// <param name="sizeZ">Map size on Z.</param>
         public TileMap(Game game, int sizeX, int sizeZ) : base(game)
         {
-            this.sizeX = sizeX;
-            this.sizeZ = sizeZ;
+            _size = new Point(sizeX, sizeZ);
             _raster.MultiSampleAntiAlias = false;
             _raster.ScissorTestEnable = true;
             _raster.FillMode = FillMode.Solid;
-            _raster.CullMode = CullMode.None;
-            _raster.DepthClipEnable = false;
+            _raster.CullMode = CullMode.CullCounterClockwiseFace;
+            _raster.DepthClipEnable = true;
             this.instancesVertexBuffer = sizeX * sizeZ;
+            var bounds = new Rectangle(0, 0, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height);
+
+            _camera = new Camera(new Vector2(0, 1000), bounds);
         }
 
         #endregion
@@ -124,34 +103,35 @@ namespace VFRZInstancing
 
 
         private RasterizerState _raster = new RasterizerState();
+        private KeyboardState before;
+
         /// <summary>
         /// Initialize all the cube instance. (sizeX * sizeZ)
         /// </summary>
         private void InitializeInstances()
         {
-            Random randomTile = new Random();
+            
 
-            int startPositionX = 0;
-            int startPositionY = 0;
-            // Set the position for each cube.
-            for (Int32 y = 0; y < this.sizeZ; y++)
+            // Set the position for each tile.
+            for (int y = 0; y < this._size.Y; y++)
             {
-                for (Int32 x = 0; x < this.sizeX; x++)
+                for (int x = 0; x < this._size.X; x++)
                 {
-                    var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
-                    this.instances[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0);
+                    var pos = MapToScreenPos(new Point(x, y));
+                    this.instances[y * this._size.X + x].World = new Vector3(pos.X, pos.Y, 1);
+                    this.instances[y * this._size.X + x].AtlasCoordinate = new ImageRenderData((byte)_randomTile.Next(0, 28), (byte)0, 0);
                 }
-
-                //isometric offset
-                startPositionY += 8;
-                startPositionX -= 16;
             }
 
-            CreateNewArrays();
+            this.instanceBuffer.SetData(this.instances);
+        }
 
-            // Set the instace data to the instanceBuffer.
-
+        private void ChangeIds()
+        {
+            for (int i = 0; i < this.instances.Length; i++)
+            {
+                this.instances[i].AtlasCoordinate = new ImageRenderData((byte)_randomTile.Next(0, 28), (byte)0, 0);
+            }
             this.instanceBuffer.SetData(this.instances);
         }
 
@@ -176,9 +156,6 @@ namespace VFRZInstancing
                 _vertices[i * 6 + 5].World = new Color((byte)0, (byte)255, (byte)0, (byte)0);
 
             }
-
-
-
             #endregion
 
             this.geometryBuffer = new VertexBuffer(this.GraphicsDevice, typeof(GeometryData), _vertices.Length, BufferUsage.WriteOnly);
@@ -202,7 +179,7 @@ namespace VFRZInstancing
             textures.Add(this.Game.Content.Load<Texture2D>("tiles32x64"));
 
             #region Init3DTexture
-            //max 2048 otherwise it draws black maybe opengl limitation
+            //max 2048 otherwise it draws black(hardware limitations)
             //also depth max is 2048 images, so you can stack 2048 images
             this.texture = new Texture3D(graphicsDevice: GraphicsDevice, width: 2048, height: 2048, depth: textures.Count, mipMap: false, format: SurfaceFormat.Color);
             int textureSizeInPixels = this.texture.Width * this.texture.Height;
@@ -235,28 +212,13 @@ namespace VFRZInstancing
 
             this.instances = new Instances[this.InstanceCount];
 
-            //for random testing of changes
-            this.instances1 = new Instances[this.InstanceCount];
-            this.instances2 = new Instances[this.InstanceCount];
-
-            //the instances can change so we have a dynamic buffer
+            //the instances can change so we have a StructuredBuffer buffer
             this.instanceBuffer = new StructuredBuffer(this.GraphicsDevice, typeof(Instances), this.InstanceCount, BufferUsage.WriteOnly, ShaderAccess.Read);
             this.InitializeInstances();
             instanceBuffer.SetData(this.instances);
 
 
             #endregion
-
-            #region Create Matrix
-
-            _transform = Matrix.CreateTranslation(new Vector3(-_cameraPosition.X, -_cameraPosition.Y, 0)) *
-                Matrix.CreateScale(scale, scale, 1) *
-                Matrix.CreateTranslation(new Vector3(GraphicsDevice.Viewport.Width * 0.5f, GraphicsDevice.Viewport.Height * 0.5f, 0));
-
-            Matrix.CreateOrthographicOffCenter(0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, 0, 0, -1, out _projection);
-
-            #endregion
-
 
 
             this.effect.Parameters["ImageSizeArray"].SetValue(_singleImageDimensions);
@@ -274,57 +236,19 @@ namespace VFRZInstancing
         public override void Update(GameTime gameTime)
         {
 
-            //InitializeInstancesTest();
-            KeyboardState _ks = Keyboard.GetState();
+            _camera.UpdateInput((float)gameTime.ElapsedGameTime.TotalMilliseconds);
 
-            var currentMouseWheelValue = Mouse.GetState().ScrollWheelValue;
-            if (_ks.IsKeyDown(Keys.Up) || _ks.IsKeyDown(Keys.W))
+            KeyboardState ks = Keyboard.GetState();
+
+            if (ks.IsKeyDown(Keys.F1) && before.IsKeyUp(Keys.F1))
             {
-                _cameraPosition.Y -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                UpdateCamera();
+                ChangeIds();
             }
-            else if (_ks.IsKeyDown(Keys.Down) || _ks.IsKeyDown(Keys.S))
-            {
-                _cameraPosition.Y += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-
-                UpdateCamera();
-            }
-            if (_ks.IsKeyDown(Keys.Left) || _ks.IsKeyDown(Keys.A))
-            {
-                _cameraPosition.X -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-
-                UpdateCamera();
-            }
-            else if (_ks.IsKeyDown(Keys.Right) || _ks.IsKeyDown(Keys.D))
-            {
-                _cameraPosition.X += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-
-                UpdateCamera();
-            }
-
-            if (currentMouseWheelValue > previousMouseWheelValue)
-            {
-                scale += 0.2f;
-
-                UpdateCamera();
-            }
-            else if (currentMouseWheelValue < previousMouseWheelValue)
-            {
-                if (scale > 0.4f) scale -= 0.2f;
-
-                UpdateCamera();
-            }
-
-            if (_ks.IsKeyDown(Keys.F1) && before.IsKeyUp(Keys.F1))
-            {
-                CreateNewArrays();
-                ChangeTilesInArray();
-            }
-            else if (_ks.IsKeyDown(Keys.F2) && before.IsKeyUp(Keys.F2))
+            else if (ks.IsKeyDown(Keys.F2) && before.IsKeyUp(Keys.F2))
             {
                 ChangeArrayEachFrame = !ChangeArrayEachFrame;
             }
-            if (_ks.IsKeyDown(Keys.F3) && before.IsKeyUp(Keys.F3))
+            if (ks.IsKeyDown(Keys.F3) && before.IsKeyUp(Keys.F3))
             {
                 imageWidth32Pixel = !imageWidth32Pixel;
                 for (int i = 0; i < instances.Length; i++)
@@ -332,79 +256,21 @@ namespace VFRZInstancing
                     instances[i].AtlasCoordinate.Index = (byte)((imageWidth32Pixel) ? 1 : 0);
                 }
             }
-
-            previousMouseWheelValue = currentMouseWheelValue;
-            before = _ks;
+            before = ks;
             if (ChangeArrayEachFrame)
-                ChangeTilesInArray();
+                ChangeIds();
 
         }
 
-        private void CreateNewArrays()
+        private Vector2 MapToScreenPos(Point position)
         {
+            int startPositionX = (int)(_tileSizehalf.X * position.X - _tileSizehalf.X * position.Y - _tileSizehalf.X);
+            int startPositionY = (int)(_tileSizehalf.Y * position.X + _tileSizehalf.Y * position.Y);
+            var pos = new Vector2(startPositionX, startPositionY);
 
-            Random randomTile = new Random();
-
-            int startPositionX = 0;
-            int startPositionY = 0;
-            // Set the position for each cube.
-            for (Int32 y = 0; y < this.sizeZ; y++)
-            {
-                for (Int32 x = 0; x < this.sizeX; x++)
-                {
-                    var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
-                    this.instances1[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances1[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0);
-                }
-
-                startPositionY += 8;
-                startPositionX -= 16;
-            }
-
-            startPositionX = 0;
-            startPositionY = 0;
-            // Set the position for each cube.
-            for (Int32 y = 0; y < this.sizeZ; y++)
-            {
-                for (Int32 x = 0; x < this.sizeX; x++)
-                {
-                    var pos = new Vector2(x * 16 + startPositionX, x * 8 + startPositionY);
-                    this.instances2[y * this.sizeX + x].World = new Vector3(pos.X, pos.Y, 1 - pos.Y / (this.sizeZ * 16));
-                    this.instances2[y * this.sizeX + x].AtlasCoordinate = new ImageRenderData((byte)randomTile.Next(0, 28), (byte)0, 0);
-                }
-
-                startPositionY += 8;
-                startPositionX -= 16;
-            }
+            return pos;
         }
 
-        private void ChangeTilesInArray()
-        {
-            changeTiles = !changeTiles;
-            if (changeTiles)
-            {
-                for (int i = 0; i < instances.Length; i++)
-                {
-                    instances[i] = instances1[i];
-                }
-            }
-            else
-            {
-                for (int i = 0; i < instances.Length; i++)
-                {
-                    instances[i] = instances2[i];
-                }
-            }
-
-            this.instanceBuffer.SetData(this.instances);
-        }
-
-        private void UpdateCamera()
-        {
-            _transform = Matrix.CreateTranslation(new Vector3(-_cameraPosition.X, -_cameraPosition.Y, 0)) *
-                  Matrix.CreateScale(scale, scale, 1) *
-                  Matrix.CreateTranslation(new Vector3(GraphicsDevice.Viewport.Width * 0.5f, GraphicsDevice.Viewport.Height * 0.5f, 0));
-        }
 
         /// <summary>
         /// Draw the cube map using one single vertexbuffer.
@@ -417,7 +283,7 @@ namespace VFRZInstancing
 
 
 
-            this.effect.Parameters["WorldViewProjection"].SetValue(_transform * _projection);
+            this.effect.Parameters["WorldViewProjection"].SetValue(_camera.Transform * _camera.Projection);
             this.effect.Parameters["TileBuffer"].SetValue(instanceBuffer);
 
             // Set the indices in the graphics device.
@@ -436,7 +302,7 @@ namespace VFRZInstancing
             this.GraphicsDevice.SetVertexBuffer(geometryBuffer);
             //dont use DrawInsttanced its to slow for Sprintes insancing see: https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau
             this.GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2 * this.instancesVertexBuffer);
-
+         
         }
         #endregion
     }

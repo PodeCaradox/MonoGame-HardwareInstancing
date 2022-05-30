@@ -18,7 +18,7 @@ namespace VFRZInstancing
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
 
-            this.map = new TileMap(this, 500, 500);
+            this.map = new TileMap(this, 1000, 1000);
             this.Components.Add(this.map);
         }
 
@@ -77,8 +77,8 @@ namespace VFRZInstancing
             map.Draw(gameTime);
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, TileMap.SS_PointBorder, DepthStencilState.DepthRead, RasterizerState.CullNone, null, null);
             _frameCounter.DrawFps(_spriteBatch, _spriteFont, new Vector2(1, 1), Color.White);
-            _spriteBatch.DrawString(_spriteFont, "F1 to Change Random Textures from Spritesheet", new Vector2(1,20), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
-            _spriteBatch.DrawString(_spriteFont, "F2 Change used Array Each Frame: "+map.ChangeArrayEachFrame, new Vector2(1, 40), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(_spriteFont, "F1 to Change TilesIDs from Spritesheet", new Vector2(1,20), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(_spriteFont, "F2 Change TilesIDs each frame: " + map.ChangeArrayEachFrame, new Vector2(1, 40), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
             _spriteBatch.DrawString(_spriteFont, "F3 Change PixelWidth, Currently: " + ((map.ImageWidth32Pixel? "32 Pixel":"30 Pixel")), new Vector2(1, 60), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
 
             _spriteBatch.End();
