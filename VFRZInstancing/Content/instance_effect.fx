@@ -40,9 +40,12 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 	index.y += column;
 	index.x += column;
 	
-	
-	if(index.x < 0 || index.y < 0 || index.y >= MapSizeY || index.x >= MapSizeX) return;
-	VisibleTiles[globalID.x + globalID.y * Columns] = AllTiles[index.y * MapSizeX + index.x];
+	uint visibleIndex = globalID.x + globalID.y * Columns;
+	if(index.x < 0 || index.y < 0 || index.y >= MapSizeY || index.x >= MapSizeX){ 
+		VisibleTiles[visibleIndex].InstanceTransform.z = -1;
+		return;
+	}
+	VisibleTiles[visibleIndex] = AllTiles[index.y * MapSizeX + index.x];
 }
 
 
@@ -101,7 +104,7 @@ InstancingVSoutput InstancingVS(in StaticVSinput input)
 	float2 position = input.Position.xy * imageSize - float2(imageSize.x / 2, imageSize.y);;
 	
 	//calculate position with camera
-	float4 pos = float4(position.xy + tile.InstanceTransform .xy,tile.InstanceTransform.z,1);
+	float4 pos = float4(position.xy + tile.InstanceTransform.xy, tile.InstanceTransform.z, 1);
 	pos = mul(pos, WorldViewProjection);
 	
 	

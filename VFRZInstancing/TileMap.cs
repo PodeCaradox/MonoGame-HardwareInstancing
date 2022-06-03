@@ -90,7 +90,7 @@ namespace VFRZInstancing
         {
             _size = new Point(sizeX, sizeZ);
             _raster.MultiSampleAntiAlias = false;
-            _raster.ScissorTestEnable = false;
+            _raster.ScissorTestEnable = true;
             _raster.FillMode = FillMode.Solid;
             _raster.CullMode = CullMode.CullCounterClockwiseFace;
             _raster.DepthClipEnable = true;
@@ -327,7 +327,7 @@ namespace VFRZInstancing
             _effect.CurrentTechnique.Passes[0].ApplyCompute();
             GraphicsDevice.DispatchCompute(tileCountX / _computeGroupSize, tileCountY / _computeGroupSize, 1);
           
-            _instancesVertexBuffer = (uint)(tileCountX + tileCountY * tileCountX);
+            _instancesVertexBuffer = (uint)(tileCountY * tileCountX);
         }
         #endregion
     }
