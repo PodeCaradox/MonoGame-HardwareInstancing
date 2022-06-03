@@ -18,9 +18,9 @@ struct Tile
 
 StructuredBuffer<Tile> AllTiles;
 RWStructuredBuffer<Tile> VisibleTiles;
-RWStructuredBuffer<uint> CountData;
 int StartPosX;
 int StartPosY;
+int Columns;
 int MapSizeX;
 int MapSizeY;
 
@@ -42,10 +42,7 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 	
 	
 	if(index.x < 0 || index.y < 0 || index.y >= MapSizeY || index.x >= MapSizeX) return;
-	
-	uint outID;
-	InterlockedAdd(CountData[0], 1, outID); // increment the instance count in the indirect draw buffer (starts at byte 4) 
-	VisibleTiles[outID] = AllTiles[index.y * MapSizeX + index.x];
+	VisibleTiles[globalID.x + globalID.y * Columns] = AllTiles[index.y * MapSizeX + index.x];
 }
 
 

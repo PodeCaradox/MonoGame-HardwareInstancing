@@ -39,12 +39,10 @@ namespace VFRZInstancing
 
         private StructuredBuffer _allTiles;
         private StructuredBuffer _visibleTiles;
-        private StructuredBuffer _counter;
         private VertexBuffer _geometryBuffer;
         private Instances[] _instances;
         private uint _instancesVertexBuffer;
         const int _computeGroupSize = 32;
-        private uint[] counterValue = new uint[1];
         #endregion
 
         #region TileMapData
@@ -221,7 +219,6 @@ namespace VFRZInstancing
             //the instances can change so we have a StructuredBuffer buffer
             _allTiles = new StructuredBuffer(GraphicsDevice, typeof(Instances), InstanceCount, BufferUsage.WriteOnly, ShaderAccess.Read);
             _visibleTiles = new StructuredBuffer(GraphicsDevice, typeof(Instances), InstanceCount, BufferUsage.WriteOnly, ShaderAccess.ReadWrite);
-            _counter = new StructuredBuffer(GraphicsDevice, typeof(uint), 1, BufferUsage.None, ShaderAccess.ReadWrite);
             InitializeInstances();
             _allTiles.SetData(_instances);
 
@@ -288,7 +285,7 @@ namespace VFRZInstancing
         {
             // Set the effect technique and parameters
             _effect.CurrentTechnique = _effect.Techniques["Instancing"];
-
+            
             ComputeCulling();
 
             if (_instancesVertexBuffer <= 0) return;
@@ -296,14 +293,11 @@ namespace VFRZInstancing
 
             _effect.Parameters["WorldViewProjection"].SetValue(_camera.Transform * _camera.Projection);
             _effect.Parameters["TileBuffer"].SetValue(_visibleTiles);
-
-            // Apply the current technique pass.
             _effect.CurrentTechnique.Passes[0].Apply();
+
             GraphicsDevice.BlendState = BlendState.NonPremultiplied;
             GraphicsDevice.RasterizerState = _raster;
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
-
-         
             GraphicsDevice.SamplerStates[0] = SS_PointBorder;
 
             GraphicsDevice.SetVertexBuffer(_geometryBuffer);
@@ -316,28 +310,24 @@ namespace VFRZInstancing
         private void ComputeCulling()
         {
             var drawingArea = _camera.CalculateDrawingArea(_tileSize);
-           
+            
+            //calculate how many tiles will be drawn.;
+            int tileCountX = drawingArea.Height + (_computeGroupSize - drawingArea.Height % _computeGroupSize);
+            int tileCountY = drawingArea.Width + (_computeGroupSize - drawingArea.Width % _computeGroupSize);
+
             _effect.Parameters["StartPosX"].SetValue(drawingArea.X);
             _effect.Parameters["StartPosY"].SetValue(drawingArea.Y);
             _effect.Parameters["MapSizeX"].SetValue(_size.X);
             _effect.Parameters["MapSizeY"].SetValue(_size.Y);
             _effect.Parameters["AllTiles"].SetValue(_allTiles);
             _effect.Parameters["VisibleTiles"].SetValue(_visibleTiles);
-            _effect.Parameters["CountData"].SetValue(_counter);
+            _effect.Parameters["Columns"].SetValue(tileCountX);
 
-
-            counterValue[0] = 0;
-            _counter.SetData(counterValue);
-
-            //calculate how many tiles will be drawn. Could also use that so we dont need a counter. Just use in shader the globalID.x + globalID.y * drawingArea.Height instead of outId;
-            int tileCountX = drawingArea.Height + (_computeGroupSize - drawingArea.Height % _computeGroupSize);
-            int tileCountY = drawingArea.Width + (_computeGroupSize - drawingArea.Width % _computeGroupSize);
 
             _effect.CurrentTechnique.Passes[0].ApplyCompute();
             GraphicsDevice.DispatchCompute(tileCountX / _computeGroupSize, tileCountY / _computeGroupSize, 1);
           
-            _counter.GetData(counterValue);
-            _instancesVertexBuffer = counterValue[0];//here tileCountX + tileCountY * drawingArea.Height
+            _instancesVertexBuffer = (uint)(tileCountX + tileCountY * tileCountX);
         }
         #endregion
     }
