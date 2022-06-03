@@ -1,10 +1,10 @@
 "MonoGame-HardwareInstancing" 
 
-this project shows how monogame 3.8.0.1641 can draw many isometric tiles with more gpu usage than spritebatch and still be dynamic.
+this project shows how MonoGame.Framework.Compute.DesktopGL 3.8.1.3, can draw many isometric tiles with more gpu usage than spritebatch and still be dynamic(normaly you only would update tileIds and not all tiles, or animate the tiles in the Compute Shader).
 
 Can be used on Linux/Windows/Mac.
 
-(the array filling can be multithreaded if you fill it up like same column size and rows/threads number, so you need in each thread the row index and column size to fill the array correctly without racecondition) thats the way i do it in my game project, so only the DrawInstancedPrimitives is singlethreaded because opengl ;)
+(the array filling is culled and filled in the compute shader) ;)
 ![Preview](https://github.com/PodeCaradox/MonoGame-HardwareInstancing/blob/master/Images/Preview.JPG)
 
 
