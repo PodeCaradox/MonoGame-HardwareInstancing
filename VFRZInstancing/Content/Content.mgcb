@@ -5,7 +5,7 @@
 /intermediateDir:obj/$(Platform)
 /platform:DesktopGL
 /config:
-/profile:HiDef
+/profile:Reach
 /compress:True
 
 #-------------------------------- References --------------------------------#
@@ -23,7 +23,7 @@
 #begin instance_effect.fx
 /importer:EffectImporter
 /processor:EffectProcessor
-/processorParam:DebugMode=Auto
+/processorParam:DebugMode=Debug
 /build:instance_effect.fx
 
 #begin tiles30x64.png

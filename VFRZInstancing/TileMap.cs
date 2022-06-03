@@ -10,17 +10,18 @@ using System.Text;
 using System.Threading.Tasks;
 using VFRZInstancing.Instancing;
 using VFRZInstancing.HelperObjects;
+using System.Diagnostics;
 /*--------------------------------------------------------
- * CubeMap.cs
- * 
- * Version: 1.0
- * Author: Filipe
- * Created: 20/03/2016 19:16:20
- * 
- * Notes:
- * Code mostly based on: http://stackoverflow.com/questions/9929103/need-help-using-instancing-in-xna-4-0
- * for testing purpose.
- * -------------------------------------------------------*/
+* CubeMap.cs
+* 
+* Version: 1.0
+* Author: Filipe
+* Created: 20/03/2016 19:16:20
+* 
+* Notes:
+* Code mostly based on: http://stackoverflow.com/questions/9929103/need-help-using-instancing-in-xna-4-0
+* for testing purpose.
+* -------------------------------------------------------*/
 
 namespace VFRZInstancing
 {
@@ -30,23 +31,27 @@ namespace VFRZInstancing
 
         public static SamplerState SS_PointBorder = new SamplerState() { Filter = TextureFilter.Point, AddressU = TextureAddressMode.Clamp, AddressV = TextureAddressMode.Clamp };
         private Camera _camera;
-        private Texture3D texture;
-        private Effect effect;
+        private Texture3D _texture;
+        private Effect _effect;
         Random _randomTile = new Random();
+
         #region Buffers
 
-        private StructuredBuffer instanceBuffer;
-        private VertexBuffer geometryBuffer;
-        private Instances[] instances;
-        private int instancesVertexBuffer;
-
+        private StructuredBuffer _allTiles;
+        private StructuredBuffer _visibleTiles;
+        private StructuredBuffer _counter;
+        private VertexBuffer _geometryBuffer;
+        private Instances[] _instances;
+        private uint _instancesVertexBuffer;
+        const int _computeGroupSize = 32;
+        private uint[] counterValue = new uint[1];
         #endregion
 
         #region TileMapData
 
         private Point _size;
-        private Point _tileSize = new Point(32,16);
-        private Point _tileSizehalf = new Point(16, 8);
+        private Vector2 _tileSize = new Vector2(32,16);
+        private Vector2 _tileSizehalf = new Vector2(16, 8);
         private Vector2[] _singleImageDimensions;
         private float _imageCount;
 
@@ -55,8 +60,8 @@ namespace VFRZInstancing
 
         #region Testing
 
-        private bool imageWidth32Pixel = false;
-        public bool ChangeArrayEachFrame = false;
+        private bool _imageWidth32Pixel = false;
+        private bool _changeArrayEachFrame = false;
 
         #endregion
 
@@ -70,7 +75,8 @@ namespace VFRZInstancing
             get { return this._size.X * this._size.Y; }
         }
 
-        public bool ImageWidth32Pixel { get => imageWidth32Pixel; set => imageWidth32Pixel = value; }
+        public bool ImageWidth32Pixel { get => _imageWidth32Pixel; set => _imageWidth32Pixel = value; }
+        public bool ChangeArrayEachFrame { get => _changeArrayEachFrame; set => _changeArrayEachFrame = value; }
 
         #endregion
 
@@ -86,14 +92,13 @@ namespace VFRZInstancing
         {
             _size = new Point(sizeX, sizeZ);
             _raster.MultiSampleAntiAlias = false;
-            _raster.ScissorTestEnable = true;
+            _raster.ScissorTestEnable = false;
             _raster.FillMode = FillMode.Solid;
             _raster.CullMode = CullMode.CullCounterClockwiseFace;
             _raster.DepthClipEnable = true;
-            this.instancesVertexBuffer = sizeX * sizeZ;
             var bounds = new Rectangle(0, 0, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height);
 
-            _camera = new Camera(new Vector2(0, 1000), bounds);
+            _camera = new Camera(new Vector2(0, 0), bounds);
         }
 
         #endregion
@@ -111,28 +116,28 @@ namespace VFRZInstancing
         private void InitializeInstances()
         {
             
-
+            int size = _size.X * _size.Y;   
             // Set the position for each tile.
-            for (int y = 0; y < this._size.Y; y++)
+            for (int y = 0; y < _size.Y; y++)
             {
-                for (int x = 0; x < this._size.X; x++)
+                for (int x = 0; x < _size.X; x++)
                 {
                     var pos = MapToScreenPos(new Point(x, y));
-                    this.instances[y * this._size.X + x].World = new Vector3(pos.X, pos.Y, 1);
-                    this.instances[y * this._size.X + x].AtlasCoordinate = new ImageRenderData((byte)_randomTile.Next(0, 28), (byte)0, 0);
+                    _instances[y * _size.X + x].World = new Vector3(pos.X, pos.Y, 1 - (float)(y + x) / size);
+                    _instances[y * _size.X + x].AtlasCoordinate = new ImageRenderData((byte)_randomTile.Next(0, 28), (byte)0, 0);
                 }
             }
 
-            this.instanceBuffer.SetData(this.instances);
+            _allTiles.SetData(this._instances);
         }
 
         private void ChangeIds()
         {
-            for (int i = 0; i < this.instances.Length; i++)
+            for (int i = 0; i < this._instances.Length; i++)
             {
-                this.instances[i].AtlasCoordinate = new ImageRenderData((byte)_randomTile.Next(0, 28), (byte)0, 0);
+                _instances[i].AtlasCoordinate = new ImageRenderData((byte)_randomTile.Next(0, 28), (byte)0, 0);
             }
-            this.instanceBuffer.SetData(this.instances);
+            _allTiles.SetData(this._instances);
         }
 
 
@@ -141,11 +146,12 @@ namespace VFRZInstancing
         /// </summary>
         private void GenerateCommonGeometry()
         {
-            GeometryData[] _vertices = new GeometryData[6 * this.instancesVertexBuffer];
+            int size = _size.X * _size.Y;
+            GeometryData[] _vertices = new GeometryData[6 * size];
 
 
             #region filling vertices
-            for (int i = 0; i < this.instancesVertexBuffer; i++)
+            for (int i = 0; i < size; i++)
             {
 
                 _vertices[i * 6 + 0].World = new Color((byte)0, (byte)0, (byte)0, (byte)0);
@@ -158,8 +164,8 @@ namespace VFRZInstancing
             }
             #endregion
 
-            this.geometryBuffer = new VertexBuffer(this.GraphicsDevice, typeof(GeometryData), _vertices.Length, BufferUsage.WriteOnly);
-            this.geometryBuffer.SetData(_vertices);
+            _geometryBuffer = new VertexBuffer(this.GraphicsDevice, typeof(GeometryData), _vertices.Length, BufferUsage.WriteOnly);
+            _geometryBuffer.SetData(_vertices);
 
         }
 
@@ -172,7 +178,7 @@ namespace VFRZInstancing
         /// </summary>
         protected override void LoadContent()
         {
-            this.effect = this.Game.Content.Load<Effect>("instance_effect");
+            _effect = this.Game.Content.Load<Effect>("instance_effect");
             var textures = new List<Texture2D>();
             //Image need to be 2048 x 2048
             textures.Add(this.Game.Content.Load<Texture2D>("tiles30x64"));
@@ -181,8 +187,8 @@ namespace VFRZInstancing
             #region Init3DTexture
             //max 2048 otherwise it draws black(hardware limitations)
             //also depth max is 2048 images, so you can stack 2048 images
-            this.texture = new Texture3D(graphicsDevice: GraphicsDevice, width: 2048, height: 2048, depth: textures.Count, mipMap: false, format: SurfaceFormat.Color);
-            int textureSizeInPixels = this.texture.Width * this.texture.Height;
+            _texture = new Texture3D(graphicsDevice: GraphicsDevice, width: 2048, height: 2048, depth: textures.Count, mipMap: false, format: SurfaceFormat.Color);
+            int textureSizeInPixels = this._texture.Width * this._texture.Height;
             var color = new Color[textureSizeInPixels * textures.Count];
 
             int counter = 0;
@@ -193,7 +199,7 @@ namespace VFRZInstancing
                 counter++;
             }
             _imageCount = textures.Count;
-            this.texture.SetData(color);
+            _texture.SetData(color);
 
             //here somehow load how big a single Image is inside a Texture2D
             _singleImageDimensions = new Vector2[textures.Count];
@@ -207,23 +213,25 @@ namespace VFRZInstancing
 
             #region Create Buffers
 
-            this.GenerateCommonGeometry();
+            GenerateCommonGeometry();
 
 
-            this.instances = new Instances[this.InstanceCount];
+            _instances = new Instances[this.InstanceCount];
 
             //the instances can change so we have a StructuredBuffer buffer
-            this.instanceBuffer = new StructuredBuffer(this.GraphicsDevice, typeof(Instances), this.InstanceCount, BufferUsage.WriteOnly, ShaderAccess.Read);
-            this.InitializeInstances();
-            instanceBuffer.SetData(this.instances);
+            _allTiles = new StructuredBuffer(GraphicsDevice, typeof(Instances), InstanceCount, BufferUsage.WriteOnly, ShaderAccess.Read);
+            _visibleTiles = new StructuredBuffer(GraphicsDevice, typeof(Instances), InstanceCount, BufferUsage.WriteOnly, ShaderAccess.ReadWrite);
+            _counter = new StructuredBuffer(GraphicsDevice, typeof(uint), 1, BufferUsage.None, ShaderAccess.ReadWrite);
+            InitializeInstances();
+            _allTiles.SetData(_instances);
 
 
             #endregion
 
 
-            this.effect.Parameters["ImageSizeArray"].SetValue(_singleImageDimensions);
-            this.effect.Parameters["NumberOf2DTextures"].SetValue(_imageCount);
-            this.effect.Parameters["SpriteTexture"].SetValue(this.texture);
+            _effect.Parameters["ImageSizeArray"].SetValue(_singleImageDimensions);
+            _effect.Parameters["NumberOf2DTextures"].SetValue(_imageCount);
+            _effect.Parameters["SpriteTexture"].SetValue(_texture);
 
             base.LoadContent();
 
@@ -233,7 +241,7 @@ namespace VFRZInstancing
         /// Update the CubeMap logic.
         /// </summary>
         /// <param name="gameTime"></param>
-        public override void Update(GameTime gameTime)
+        public void Update(GameTime gameTime)
         {
 
             _camera.UpdateInput((float)gameTime.ElapsedGameTime.TotalMilliseconds);
@@ -250,10 +258,10 @@ namespace VFRZInstancing
             }
             if (ks.IsKeyDown(Keys.F3) && before.IsKeyUp(Keys.F3))
             {
-                imageWidth32Pixel = !imageWidth32Pixel;
-                for (int i = 0; i < instances.Length; i++)
+                _imageWidth32Pixel = !_imageWidth32Pixel;
+                for (int i = 0; i < _instances.Length; i++)
                 {
-                    instances[i].AtlasCoordinate.Index = (byte)((imageWidth32Pixel) ? 1 : 0);
+                    _instances[i].AtlasCoordinate.Index = (byte)((_imageWidth32Pixel) ? 1 : 0);
                 }
             }
             before = ks;
@@ -264,9 +272,9 @@ namespace VFRZInstancing
 
         private Vector2 MapToScreenPos(Point position)
         {
-            int startPositionX = (int)(_tileSizehalf.X * position.X - _tileSizehalf.X * position.Y - _tileSizehalf.X);
-            int startPositionY = (int)(_tileSizehalf.Y * position.X + _tileSizehalf.Y * position.Y);
-            var pos = new Vector2(startPositionX, startPositionY);
+            float postionXCentered = (_tileSizehalf.X * position.X - _tileSizehalf.X * position.Y) - 1;
+            float postionYCentered = (_tileSizehalf.Y * position.X + _tileSizehalf.Y * position.Y) + _tileSizehalf.Y * 2;
+            var pos = new Vector2(postionXCentered, postionYCentered);
 
             return pos;
         }
@@ -279,30 +287,57 @@ namespace VFRZInstancing
         public void Draw(GameTime gameTime)
         {
             // Set the effect technique and parameters
-            this.effect.CurrentTechnique = effect.Techniques["Instancing"];
+            _effect.CurrentTechnique = _effect.Techniques["Instancing"];
+
+            ComputeCulling();
+
+            if (_instancesVertexBuffer <= 0) return;
 
 
-
-            this.effect.Parameters["WorldViewProjection"].SetValue(_camera.Transform * _camera.Projection);
-            this.effect.Parameters["TileBuffer"].SetValue(instanceBuffer);
-
-            // Set the indices in the graphics device.
+            _effect.Parameters["WorldViewProjection"].SetValue(_camera.Transform * _camera.Projection);
+            _effect.Parameters["TileBuffer"].SetValue(_visibleTiles);
 
             // Apply the current technique pass.
-            this.effect.CurrentTechnique.Passes[0].Apply();
+            _effect.CurrentTechnique.Passes[0].Apply();
+            GraphicsDevice.BlendState = BlendState.NonPremultiplied;
+            GraphicsDevice.RasterizerState = _raster;
+            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
-            // Set the vertex buffer and draw the instanced primitives.
-            this.GraphicsDevice.BlendState = BlendState.NonPremultiplied;
-            this.GraphicsDevice.RasterizerState = _raster;
-            this.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
-
-            //this.instanceBuffer.SetData(this.instances);
-            this.GraphicsDevice.SamplerStates[0] = SS_PointBorder;
-
-            this.GraphicsDevice.SetVertexBuffer(geometryBuffer);
-            //dont use DrawInsttanced its to slow for Sprintes insancing see: https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau
-            this.GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2 * this.instancesVertexBuffer);
          
+            GraphicsDevice.SamplerStates[0] = SS_PointBorder;
+
+            GraphicsDevice.SetVertexBuffer(_geometryBuffer);
+
+            //dont use DrawInsttanced its to slow for Sprintes insancing see: https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau
+            GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2 * (int)_instancesVertexBuffer);
+         
+        }
+      
+        private void ComputeCulling()
+        {
+            var drawingArea = _camera.CalculateDrawingArea(_tileSize);
+           
+            _effect.Parameters["StartPosX"].SetValue(drawingArea.X);
+            _effect.Parameters["StartPosY"].SetValue(drawingArea.Y);
+            _effect.Parameters["MapSizeX"].SetValue(_size.X);
+            _effect.Parameters["MapSizeY"].SetValue(_size.Y);
+            _effect.Parameters["AllTiles"].SetValue(_allTiles);
+            _effect.Parameters["VisibleTiles"].SetValue(_visibleTiles);
+            _effect.Parameters["CountData"].SetValue(_counter);
+
+
+            counterValue[0] = 0;
+            _counter.SetData(counterValue);
+
+            //calculate how many tiles will be drawn. Could also use that so we dont need a counter. Just use in shader the globalID.x + globalID.y * drawingArea.Height instead of outId;
+            int tileCountX = drawingArea.Height + (_computeGroupSize - drawingArea.Height % _computeGroupSize);
+            int tileCountY = drawingArea.Width + (_computeGroupSize - drawingArea.Width % _computeGroupSize);
+
+            _effect.CurrentTechnique.Passes[0].ApplyCompute();
+            GraphicsDevice.DispatchCompute(tileCountX / _computeGroupSize, tileCountY / _computeGroupSize, 1);
+          
+            _counter.GetData(counterValue);
+            _instancesVertexBuffer = counterValue[0];//here tileCountX + tileCountY * drawingArea.Height
         }
         #endregion
     }

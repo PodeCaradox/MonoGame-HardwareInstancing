@@ -113,15 +113,15 @@ internal class Camera
     }
 
 
-    internal Rectangle CalculateDrawingArea(in Point tileSize)
+    internal Rectangle CalculateDrawingArea(in Vector2 tileSize)
     {
-        var posTopRight = CalculateTilesVisible(tileSize, new Point(VisibleArea.X + VisibleArea.Width, VisibleArea.Y));
-        int widht = VisibleArea.Width / tileSize.X * 2;// *2 because rows differnce
-        int height = VisibleArea.Width / tileSize.Y;
-        return new Rectangle(posTopRight, new Point(widht, height));
+        var pos = ScreenPointToMapPoint(tileSize, new Point(VisibleArea.X + VisibleArea.Width, VisibleArea.Y));
+        int widht = (int)(VisibleArea.Width / tileSize.X) * 2;// *2 because rows differnce
+        int height = (int)(VisibleArea.Height / tileSize.Y);
+        return new Rectangle(pos.X, pos.Y, widht, height);
     }
 
-    private Point CalculateTilesVisible(in Point tileSize, in Point position)
+    private Point ScreenPointToMapPoint(in Vector2 tileSize, in Point position)
     {
         float x = (position.Y / tileSize.Y) + (position.X / tileSize.X);
         float y = (position.Y / tileSize.Y) - (position.X / tileSize.X);

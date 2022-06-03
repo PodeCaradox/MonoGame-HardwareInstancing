@@ -17,19 +17,19 @@ namespace VFRZInstancing
         {
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
-
-            this.map = new TileMap(this, 1000, 1000);
+            
+            this.map = new TileMap(this, 1024, 1024);
             this.Components.Add(this.map);
         }
 
         protected override void Initialize()
         {
-            _graphics.GraphicsProfile = GraphicsProfile.HiDef;
+            _graphics.GraphicsProfile = GraphicsProfile.Reach;
             _graphics.PreferMultiSampling = true;
             _graphics.IsFullScreen = false;
             _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
             _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
-
+           
             _graphics.SynchronizeWithVerticalRetrace = false;
 
             _graphics.ApplyChanges();
@@ -64,7 +64,7 @@ namespace VFRZInstancing
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-
+            map.Update(gameTime);
             // TODO: Add your update logic here
             _frameCounter.Update(gameTime);
             base.Update(gameTime);
@@ -77,9 +77,9 @@ namespace VFRZInstancing
             map.Draw(gameTime);
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, TileMap.SS_PointBorder, DepthStencilState.DepthRead, RasterizerState.CullNone, null, null);
             _frameCounter.DrawFps(_spriteBatch, _spriteFont, new Vector2(1, 1), Color.White);
-            _spriteBatch.DrawString(_spriteFont, "F1 to Change TilesIDs from Spritesheet", new Vector2(1,20), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(_spriteFont, "F1 to Change TilesIDs from Spritesheet", new Vector2(1, 20), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
             _spriteBatch.DrawString(_spriteFont, "F2 Change TilesIDs each frame: " + map.ChangeArrayEachFrame, new Vector2(1, 40), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
-            _spriteBatch.DrawString(_spriteFont, "F3 Change PixelWidth, Currently: " + ((map.ImageWidth32Pixel? "32 Pixel":"30 Pixel")), new Vector2(1, 60), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
+            _spriteBatch.DrawString(_spriteFont, "F3 Change PixelWidth, Currently: " + ((map.ImageWidth32Pixel ? "32 Pixel" : "30 Pixel")), new Vector2(1, 60), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0);
 
             _spriteBatch.End();
             base.Draw(gameTime);
