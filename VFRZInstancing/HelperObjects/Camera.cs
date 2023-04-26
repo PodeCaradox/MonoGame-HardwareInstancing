@@ -24,7 +24,7 @@ internal class Camera
     {
         this.CameraPosition = CameraPosition;
         this.PreviousMouseWheelValue = Mouse.GetState().ScrollWheelValue;
-        this.Zoom = 1f;
+        this.Zoom = 1.0f;
         this._bounds = viewport;
         Matrix.CreateOrthographicOffCenter(0, viewport.Width, viewport.Height, 0, 0, -1, out _projection);
         UpdateMatrix();
@@ -118,7 +118,7 @@ internal class Camera
         var pos = ScreenPointToMapPoint(tileSize, new Point(VisibleArea.X + VisibleArea.Width, VisibleArea.Y));
         int widht = (int)(VisibleArea.Width / tileSize.X) * 2;// *2 because rows differnce
         int height = (int)(VisibleArea.Height / tileSize.Y);
-        return new Rectangle(pos.X, pos.Y, widht, height);
+        return new Rectangle(pos.X, pos.Y - 2, widht, height);
     }
 
     private Point ScreenPointToMapPoint(in Vector2 tileSize, in Point position)

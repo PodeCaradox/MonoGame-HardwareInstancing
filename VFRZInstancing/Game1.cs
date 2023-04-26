@@ -12,23 +12,25 @@ namespace VFRZInstancing
         private TileMap map;
         private SpriteFont _spriteFont;
         private FrameCounter _frameCounter;
-
+        public int width = 800;
+        public int height = 800;
         public Game1()
         {
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
             
-            this.map = new TileMap(this, 1024, 1024);
+            this.map = new TileMap(this, 700, 300, width, height);
             this.Components.Add(this.map);
         }
 
         protected override void Initialize()
         {
+
             _graphics.GraphicsProfile = GraphicsProfile.Reach;
             _graphics.PreferMultiSampling = true;
             _graphics.IsFullScreen = false;
-            _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
-            _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+            _graphics.PreferredBackBufferWidth = width;
+            _graphics.PreferredBackBufferHeight = height;
            
             _graphics.SynchronizeWithVerticalRetrace = false;
 

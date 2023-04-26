@@ -14,13 +14,41 @@ struct Tile
 // Compute Shader
 //=============================================================================
 #define GroupSize 32
+int CalculateRows(int2 start, int mapSizeX)
+{
+	int rows;
+	if (start.y < start.x)
+	{
+		start.x -= start.y;
+		start.y -= start.y;
+		rows = mapSizeX - start.x;
+	}
+	else
+	{
+		start.y -= start.x;
+		start.x -= start.x;
+		rows = mapSizeX + start.y;
+	}
 
+
+	return rows;
+}
+
+int GetColumnsUntilBorder(int2 index)
+{
+	if (index.x < index.y)
+	{
+		return index.x;
+	}
+	return index.y;
+}
 
 StructuredBuffer<Tile> AllTiles;
 RWStructuredBuffer<Tile> VisibleTiles;
 int StartPosX;
 int StartPosY;
 int Columns;
+int Rows;
 int MapSizeX;
 int MapSizeY;
 
@@ -31,20 +59,111 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 	int2 index = int2(StartPosX,StartPosY);
 	uint column = globalID.x;
 	uint row = globalID.y;
-	if(row % 2 == 1){
-		index.x--;
-	}
+	
+	index.x -= row % 2;
 	row /= 2;
 	index.y += row;
 	index.x -= row;
+	int2 actual_row_start = index;
 	index.y += column;
 	index.x += column;
 	
-	uint visibleIndex = globalID.x + globalID.y * Columns;
+
 	if(index.x < 0 || index.y < 0 || index.y >= MapSizeY || index.x >= MapSizeX){ 
-		VisibleTiles[visibleIndex].InstanceTransform.z = -1;
 		return;
 	}
+
+	int visibleIndex = 0;
+	int rows_behind;
+	int2 start = int2(StartPosX, StartPosY);
+	int outside = 1;
+	for (int j = 0; j < Columns; j++)
+	{
+		start.x++;
+		start.y++;
+		if (start.x >= 0 && start.y >= 0 && start.y < MapSizeY && start.x < MapSizeX)
+		{
+			outside = 0;
+			break;
+		}
+	}
+
+	//calculate the starting point.
+	if (outside == 1)
+	{
+		if (StartPosX + StartPosY < MapSizeX)
+		{
+			int2 left = int2(StartPosX - Rows, StartPosY + Rows);
+			left.x += left.y;
+			left.y -= left.y;
+			start = int2(MapSizeX - 1, 0);
+			int difference = start.x - left.x;
+			difference += difference % 2;
+			difference /= 2;
+			start.x -= difference;
+			start.y -= difference;
+		}
+		else // underneath map
+		{
+			int to_the_left = StartPosX - MapSizeX;
+			start = int2(StartPosX - to_the_left, StartPosY + to_the_left);
+		}
+	}//inside the map
+	else
+	{
+		start = int2(StartPosX, StartPosY);
+	}
+	rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
+
+	int2 starting_in_map = int2(0, 0);
+	if (start.x >= 0 && start.y >= 0 && start.y < MapSizeY && start.x < MapSizeX)
+	{
+		starting_in_map = start;
+	}
+
+	//array
+	for (int i = 0; i < rows_behind; i++) {
+		int current_row = i / 2;
+		int2 pos = int2(start.x - i % 2 - current_row, start.y + current_row);
+		int vertical_tiles = Columns;
+		if (pos.x < 0 || pos.y < 0) {
+			if (pos.x < pos.y) {
+				vertical_tiles += pos.x;
+				pos.y -= pos.x;
+				pos.x = 0;
+			}
+			else {
+				vertical_tiles += pos.y;
+				pos.x -= pos.y;
+				pos.y = 0;
+			}
+		}
+		pos.x += vertical_tiles;
+		pos.y += vertical_tiles;
+
+		if (pos.x >= MapSizeX) {
+			int tiles_overflow = pos.x - MapSizeX;   
+			vertical_tiles -= tiles_overflow;
+			pos.y -= tiles_overflow;
+
+		}
+
+		if (pos.y >= MapSizeY) {
+			int tiles_overflow = pos.y - MapSizeY;
+			vertical_tiles -= tiles_overflow;
+		}
+		visibleIndex += vertical_tiles;
+	}
+
+	int columns = GetColumnsUntilBorder(index);
+
+	if (actual_row_start.x >= 0 && actual_row_start.y >= 0)
+	{
+		columns -= GetColumnsUntilBorder(actual_row_start);
+	}
+
+	visibleIndex += columns;
+
 	VisibleTiles[visibleIndex] = AllTiles[index.y * MapSizeX + index.x];
 }
 

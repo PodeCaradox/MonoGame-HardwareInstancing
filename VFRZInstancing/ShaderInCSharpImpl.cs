@@ -1,26 +1,18 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Xna.Framework;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace VFRZInstancing
 {
-    public static class Program
+    internal static class ShaderInCSharpImpl
     {
-        [STAThread]
-        static void Main()
+        internal static void testc(int StartPosX, int StartPosY, int Columns, int Rows, int MapSizeX, int MapSizeY)
         {
-            //testc();
-            using (var game = new Game1())
-                game.Run();
-        }
-
-        private static void testc()
-        {
-            int StartPosX = -5;
-            int StartPosY = 9;
-            int Columns = 64;
-            int Rows = 64 / 2;
-            int MapSizeX = 70;
-            int MapSizeY = 70;
+            int visibleIndex = 0;
             for (int globalIDY = 0; globalIDY < 64; globalIDY++)
             {
                 for (int globalIDX = 0; globalIDX < 64; globalIDX++)
@@ -33,6 +25,7 @@ namespace VFRZInstancing
                     row /= 2;
                     index.Y += row;
                     index.X -= row;
+                    Point actual_row_start = index;
                     index.Y += column;
                     index.X += column;
 
@@ -41,9 +34,7 @@ namespace VFRZInstancing
                     {
                         continue;
                     }
-
-                    int visibleIndex = 0;
-                    int rows_behind = 0;
+                    visibleIndex = 0;
                     Point start = new Point(StartPosX, StartPosY);
                     int outside = 1;
                     for (int i = 0; i < Columns; i++)
@@ -57,31 +48,37 @@ namespace VFRZInstancing
                         }
                     }
 
-                    //calculate the starting point when outside of map.
-                    if(outside == 1)
+                    //calculate the starting point when outside of map on the right.
+                    if (outside == 1)
                     {
-                        Point left = new Point(StartPosX - Rows, StartPosY + Rows);
-                        left.X += left.Y;
-                        left.Y -= left.Y;
-                        start = new Point(MapSizeX - 1, 0);
-                        int difference = start.X - left.X;
-                        difference += difference % 2;
-                        difference /= 2;
-                        start.X -= difference;
-                        start.Y -= difference;
+                        //above map
+                        if (StartPosX + StartPosY < MapSizeX)
+                        {
+                            Point left = new Point(StartPosX - Rows, StartPosY + Rows);
+                            left.X += left.Y;
+                            left.Y -= left.Y;
+                            start = new Point(MapSizeX - 1, 0);
+                            int difference = start.X - left.X;
+                            difference += difference % 2;
+                            difference /= 2;
+                            start.X -= difference;
+                            start.Y -= difference;
+                        }
+                        else // underneath map
+                        {
+                            int to_the_left = StartPosX - MapSizeX;
+                            start = new Point(StartPosX - to_the_left, StartPosY + to_the_left);
+                        }
 
 
                     }//inside the map
                     else
                     {
                         start = new Point(StartPosX, StartPosY);
-                        
-                        // welche Reihe bin ich links welche Rechts und subtrahieren  = rows
                     }
-                    rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
+                    int rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
 
-
-
+                    //this will be a array in the shader
                     for (int i = 0; i < rows_behind; i++)
                     {
                         int current_row = i / 2;
@@ -123,27 +120,37 @@ namespace VFRZInstancing
 
                     }
 
-                    if (index.X < index.Y)
+
+                    int columns = GetColumnsUntilBorder(index);
+
+                    if (actual_row_start.X >= 0 && actual_row_start.Y >= 0)
                     {
-                        visibleIndex += index.X;
-                    }
-                    else
-                    {
-                        visibleIndex += index.Y;
+                        columns -= GetColumnsUntilBorder(actual_row_start);
                     }
 
-                    Debug.WriteLine(visibleIndex + "        " + rows_behind + "        " + start);
+                    visibleIndex += columns;
+                    //Debug.WriteLine(visibleIndex + "        " + rows_behind + "        " + start);
                 }
             }
+            Debug.WriteLine(visibleIndex + " In Shader calculated");
 
+        }
 
+        private static int GetColumnsUntilBorder(Point index)
+        {
+            if (index.X < index.Y)
+            {
+                return index.X;
+            }
+
+            return index.Y;
 
         }
 
         private static int CalculateRows(Point start, int mapSizeX)
         {
             int rows;
-            if(start.Y < start.X)
+            if (start.Y < start.X)
             {
                 start.X -= start.Y;
                 start.Y -= start.Y;
