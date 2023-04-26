@@ -96,7 +96,19 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 			int2 left = int2(StartPosX - Rows, StartPosY + Rows);
 			left.x += left.y;
 			left.y -= left.y;
-			start = int2(MapSizeX - 1, 0);
+			
+			int2 righ_bottom_screen = int2(StartPosX + Columns, StartPosY + Columns);
+			if (righ_bottom_screen.x + righ_bottom_screen.y > MapSizeX)
+			{
+				start = int2(MapSizeX - 1, 0);
+			}
+			else
+			{
+				righ_bottom_screen.x += righ_bottom_screen.y;
+				righ_bottom_screen.y -= righ_bottom_screen.y;
+				start = righ_bottom_screen;
+			}
+
 			int difference = start.x - left.x;
 			difference += difference % 2;
 			difference /= 2;

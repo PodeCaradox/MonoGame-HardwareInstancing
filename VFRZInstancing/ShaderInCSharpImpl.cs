@@ -13,9 +13,9 @@ namespace VFRZInstancing
         internal static void testc(int StartPosX, int StartPosY, int Columns, int Rows, int MapSizeX, int MapSizeY)
         {
             int visibleIndex = 0;
-            for (int globalIDY = 0; globalIDY < 64; globalIDY++)
+            for (int globalIDY = 0; globalIDY < Rows; globalIDY++)
             {
-                for (int globalIDX = 0; globalIDX < 64; globalIDX++)
+                for (int globalIDX = 0; globalIDX < Columns; globalIDX++)
                 {
                     Point index = new Point(StartPosX, StartPosY);
                     int column = globalIDX;
@@ -57,7 +57,21 @@ namespace VFRZInstancing
                             Point left = new Point(StartPosX - Rows, StartPosY + Rows);
                             left.X += left.Y;
                             left.Y -= left.Y;
-                            start = new Point(MapSizeX - 1, 0);
+                            Point righ_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
+                            if(righ_bottom_screen.X + righ_bottom_screen.Y > MapSizeX)
+                            {
+                                start = new Point(MapSizeX - 1, 0);
+                            }
+                            else
+                            {
+                                righ_bottom_screen.X += righ_bottom_screen.Y;
+                                righ_bottom_screen.Y -= righ_bottom_screen.Y;
+                                start = righ_bottom_screen;
+                            }
+                            
+
+
+
                             int difference = start.X - left.X;
                             difference += difference % 2;
                             difference /= 2;
