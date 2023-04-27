@@ -355,7 +355,7 @@ namespace VFRZInstancing
                 }
             }
 
-            //calculate the starting point when outside of map.
+            //calculate the starting point when outside of map on the right.
             if (outside == 1)
             {
                 //above map
@@ -366,17 +366,19 @@ namespace VFRZInstancing
                     left.Y -= left.Y;
 
                     Point righ_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
+                    //check if we are passed the last Tile for MapSizeX with the Camera
                     if (righ_bottom_screen.X + righ_bottom_screen.Y > MapSizeX)
                     {
                         start = new Point(MapSizeX - 1, 0);
                     }
                     else
-                    {
+                    {//we have not pass the Last Tile so x < MapSizeX for Camera right bottom Position
                         righ_bottom_screen.X += righ_bottom_screen.Y;
                         righ_bottom_screen.Y -= righ_bottom_screen.Y;
                         start = righ_bottom_screen;
                     }
 
+                    //difference is all tiles on the x axis and because we calculate here x,y different to Isomectric Coordinates we need to divide by 2 and for odd number add 1 so % 2
                     int difference = start.X - left.X;
                     difference += difference % 2;
                     difference /= 2;
@@ -396,12 +398,14 @@ namespace VFRZInstancing
             }
 
 
-            //We will save this in a array and send to compute shader so we dont need to loop there which is bad.
+            //this will be a array in the shader later
+            //calculate how many tiles are in each Row will be drawn so we ge Correct Array index
             for (int i = 0; i < Rows; i++)
             {
                 int current_row = i / 2;
                 Point pos = new Point(start.X - i % 2 - current_row, start.Y + current_row);
                 int vertical_tiles = Columns;
+                // How many Tiles can be ignored because above Map
                 if (pos.X < 0 || pos.Y < 0)
                 {
                     if (pos.X < pos.Y)
@@ -421,6 +425,7 @@ namespace VFRZInstancing
                 pos.X += vertical_tiles;
                 pos.Y += vertical_tiles;
 
+                // How many Tiles can be ignored because overflow the Map
                 if (pos.X >= MapSizeX)
                 {
                     int tiles_overflow = pos.X - MapSizeX;
@@ -435,6 +440,7 @@ namespace VFRZInstancing
                     vertical_tiles -= tiles_overflow;
                 }
 
+                //When verticaliles get negativ just end.
                 if (vertical_tiles < 0) break;
                 visibleIndex += vertical_tiles;
 

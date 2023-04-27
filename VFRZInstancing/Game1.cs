@@ -19,7 +19,7 @@ namespace VFRZInstancing
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
             
-            this.map = new TileMap(this, 700, 300, width, height);
+            this.map = new TileMap(this, 7000, 3000, width, height);
             this.Components.Add(this.map);
         }
 

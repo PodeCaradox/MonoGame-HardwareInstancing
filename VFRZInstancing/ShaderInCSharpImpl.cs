@@ -35,6 +35,8 @@ namespace VFRZInstancing
                         continue;
                     }
                     visibleIndex = 0;
+
+                    //check if we are outside with the Top Right Point of the camera
                     Point start = new Point(StartPosX, StartPosY);
                     int outside = 1;
                     for (int i = 0; i < Columns; i++)
@@ -51,26 +53,26 @@ namespace VFRZInstancing
                     //calculate the starting point when outside of map on the right.
                     if (outside == 1)
                     {
-                        //above map
+                        //above map on the righ side
                         if (StartPosX + StartPosY < MapSizeX)
                         {
                             Point left = new Point(StartPosX - Rows, StartPosY + Rows);
                             left.X += left.Y;
                             left.Y -= left.Y;
+
                             Point righ_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
+                            //check if we are passed the last Tile for MapSizeX with the Camera
                             if(righ_bottom_screen.X + righ_bottom_screen.Y > MapSizeX)
                             {
                                 start = new Point(MapSizeX - 1, 0);
                             }
                             else
                             {
+                                //we are above the Last Tile so x < MapSizeX for Camera right bottom Position
                                 righ_bottom_screen.X += righ_bottom_screen.Y;
                                 righ_bottom_screen.Y -= righ_bottom_screen.Y;
                                 start = righ_bottom_screen;
                             }
-                            
-
-
 
                             int difference = start.X - left.X;
                             difference += difference % 2;
@@ -84,15 +86,17 @@ namespace VFRZInstancing
                             start = new Point(StartPosX - to_the_left, StartPosY + to_the_left);
                         }
 
-
                     }//inside the map
                     else
                     {
                         start = new Point(StartPosX, StartPosY);
                     }
+
+                    //Calc how many rows are allready drawn behind us, until camera view end on the right side
                     int rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
 
                     //this will be a array in the shader
+                    //calculate how many tiles are in each Row will be drawn
                     for (int i = 0; i < rows_behind; i++)
                     {
                         int current_row = i / 2;
@@ -134,9 +138,10 @@ namespace VFRZInstancing
 
                     }
 
-
+                    //get all Colums to the actual Index
                     int columns = GetColumnsUntilBorder(index);
 
+                    //get correct Index if the Camera is inside of the Map so we subtract all Colums above of the camera view
                     if (actual_row_start.X >= 0 && actual_row_start.Y >= 0)
                     {
                         columns -= GetColumnsUntilBorder(actual_row_start);
@@ -164,6 +169,7 @@ namespace VFRZInstancing
         private static int CalculateRows(Point start, int mapSizeX)
         {
             int rows;
+            //Check if we are near y axis or x axis he lower one is the number of rows. and for y > x we add mapSizeX
             if (start.Y < start.X)
             {
                 start.X -= start.Y;

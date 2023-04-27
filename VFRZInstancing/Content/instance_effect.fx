@@ -73,10 +73,12 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 		return;
 	}
 
+	//calc index for visible tiles array start
 	int visibleIndex = 0;
 	int rows_behind;
 	int2 start = int2(StartPosX, StartPosY);
 	int outside = 1;
+	//check if we are outside with the Top Right Point of the camera
 	for (int j = 0; j < Columns; j++)
 	{
 		start.x++;
@@ -88,9 +90,10 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 		}
 	}
 
-	//calculate the starting point.
+	//calculate the starting point when outside of map on the right.
 	if (outside == 1)
 	{
+		//above map
 		if (StartPosX + StartPosY < MapSizeX)
 		{
 			int2 left = int2(StartPosX - Rows, StartPosY + Rows);
@@ -98,17 +101,20 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 			left.y -= left.y;
 			
 			int2 righ_bottom_screen = int2(StartPosX + Columns, StartPosY + Columns);
+			//check if we are passed the last Tile for MapSizeX with the Camera
 			if (righ_bottom_screen.x + righ_bottom_screen.y > MapSizeX)
 			{
 				start = int2(MapSizeX - 1, 0);
 			}
 			else
 			{
+				//we are above the Last Tile so x < MapSizeX for Camera right bottom Position
 				righ_bottom_screen.x += righ_bottom_screen.y;
 				righ_bottom_screen.y -= righ_bottom_screen.y;
 				start = righ_bottom_screen;
 			}
 
+			//difference is all tiles on the x axis and because we calculate here x,y different to Isomectric View we need to divide by 2 and for odd number add 1 so % 2
 			int difference = start.x - left.x;
 			difference += difference % 2;
 			difference /= 2;
@@ -125,15 +131,12 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 	{
 		start = int2(StartPosX, StartPosY);
 	}
+
+	//Calc how many rows are allready drawn behind us, until camera view end on the right side
 	rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
 
-	int2 starting_in_map = int2(0, 0);
-	if (start.x >= 0 && start.y >= 0 && start.y < MapSizeY && start.x < MapSizeX)
-	{
-		starting_in_map = start;
-	}
-
-	//array
+	//this will be a array in the shader later
+	//calculate how many tiles are in each Row will be drawn so we ge Correct Array index
 	for (int i = 0; i < rows_behind; i++) {
 		int current_row = i / 2;
 		int2 pos = int2(start.x - i % 2 - current_row, start.y + current_row);
@@ -167,14 +170,18 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 		visibleIndex += vertical_tiles;
 	}
 
+	//get all Colums to the actual Index
 	int columns = GetColumnsUntilBorder(index);
 
+	//get correct Index if the Camera is inside of the Map so we subtract all Colums above of the camera view
 	if (actual_row_start.x >= 0 && actual_row_start.y >= 0)
 	{
 		columns -= GetColumnsUntilBorder(actual_row_start);
 	}
 
 	visibleIndex += columns;
+	//calc index for visible tiles array end
+
 
 	VisibleTiles[visibleIndex] = AllTiles[index.y * MapSizeX + index.x];
 }
@@ -229,7 +236,7 @@ InstancingVSoutput InstancingVS(in StaticVSinput input)
 	float2 imageSize= ImageSizeArray[index];
 	
 	//how many Images are possible inside of the big texture
-	float2 NumberOfTextures = float2(2048,2048) / float2(imageSize.x,imageSize.y); // all Images are 2048 x 2048 because 3DTexture doesnt support more and give blackscreen if bigger, maybe because old opengl 3_0
+	float2 NumberOfTextures = float2(2048,2048) / float2(imageSize.x,imageSize.y); // all Images are 2048 x 2048 because 3DTexture doesnt support more and give blackscreen if bigger. Old Hardware cant support that much
 	
 
 	float2 position = input.Position.xy * imageSize - float2(imageSize.x / 2, imageSize.y);;
@@ -241,7 +248,7 @@ InstancingVSoutput InstancingVS(in StaticVSinput input)
 	
 	output.Position = pos;
 	output.TexCoord = float3((input.Position.x / NumberOfTextures.x) + (1.0f / NumberOfTextures.x * atlasCoordinate.x),
-							 (input.Position.y / NumberOfTextures.y) + (1.0f / NumberOfTextures.y * atlasCoordinate.y), index/NumberOf2DTextures + 0.1f / NumberOf2DTextures);//+0.1f / NumberOf2DTextures because texture3d want some between value?
+							 (input.Position.y / NumberOfTextures.y) + (1.0f / NumberOfTextures.y * atlasCoordinate.y), index/NumberOf2DTextures + 0.1f / NumberOf2DTextures);//+0.1f / NumberOf2DTextures because texture3d want some between value, in future use 2dTextureArray?
 	
 	
 	return output;
