@@ -24,10 +24,13 @@ namespace VFRZInstancing
 
         internal void Update(GameTime gameTime)
         {
+            frames++; 
+            updates++;
             now = gameTime.TotalGameTime.TotalSeconds;
             elapsed = (double)(now - last);
-            if (elapsed > msgFrequency)
-            {
+            if (elapsed <= msgFrequency)
+                return;
+            
                 //msg = " Fps: " + (frames / elapsed).ToString() + "\n Elapsed time: " + elapsed.ToString() + "\n Updates: " + updates.ToString() + "\n Frames: " + frames.ToString();
                 //Console.WriteLine(msg);
                 msg = " Fps: " + ((int)(frames / elapsed)).ToString();
@@ -36,14 +39,14 @@ namespace VFRZInstancing
                 frames = 0;
                 updates = 0;
                 last = now;
-            }
-            updates++;
+            
+           
         }
 
         public void DrawFps(SpriteBatch spriteBatch, SpriteFont font, Vector2 fpsDisplayPosition, Color fpsTextColor)
         {
             spriteBatch.DrawString(font, msg, fpsDisplayPosition, fpsTextColor);
-            frames++;
+            
         }
     }
 }

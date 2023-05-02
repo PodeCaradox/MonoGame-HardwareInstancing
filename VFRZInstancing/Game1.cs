@@ -12,14 +12,15 @@ namespace VFRZInstancing
         private TileMap map;
         private SpriteFont _spriteFont;
         private FrameCounter _frameCounter;
-        public int width = 800;
-        public int height = 800;
+        public int width = 1600;
+        public int height = 1000;
         public Game1()
         {
             _frameCounter = new FrameCounter();
             _graphics = new GraphicsDeviceManager(this);
-            
-            this.map = new TileMap(this, 7000, 3000, width, height);
+            //width = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
+            //height = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+            this.map = new TileMap(this, 2000, 2000, width, height);
             this.Components.Add(this.map);
         }
 
@@ -41,8 +42,8 @@ namespace VFRZInstancing
             this.IsFixedTimeStep = false;
             this.TargetElapsedTime = TimeSpan.FromMilliseconds(16);
             //Wen man Borderless angibt  wird grafikarte nich voll benutzt
-            this.Window.IsBorderless = false;
-            this.Window.Position = new Point(0, 0);
+           // this.Window.IsBorderless = false;
+            this.Window.Position = new Point(20, 20);
     
 
 

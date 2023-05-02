@@ -19,15 +19,11 @@ int CalculateRows(int2 start, int mapSizeX)
 	int rows;
 	if (start.y < start.x)
 	{
-		start.x -= start.y;
-		start.y -= start.y;
-		rows = mapSizeX - start.x;
+		rows = mapSizeX - (start.x - start.y);
 	}
 	else
 	{
-		start.y -= start.x;
-		start.x -= start.x;
-		rows = mapSizeX + start.y;
+		rows = mapSizeX + (start.y - start.x);
 	}
 
 
@@ -160,7 +156,6 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 			int tiles_overflow = pos.x - MapSizeX;   
 			vertical_tiles -= tiles_overflow;
 			pos.y -= tiles_overflow;
-
 		}
 
 		if (pos.y >= MapSizeY) {
