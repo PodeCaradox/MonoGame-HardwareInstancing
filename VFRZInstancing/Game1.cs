@@ -20,7 +20,7 @@ namespace VFRZInstancing
             _graphics = new GraphicsDeviceManager(this);
             //width = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
             //height = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
-            this.map = new TileMap(this, 40, 40, width, height);
+            this.map = new TileMap(this, 10, 10, width, height);
             this.Components.Add(this.map);
         }
 

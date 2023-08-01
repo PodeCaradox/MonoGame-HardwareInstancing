@@ -333,7 +333,6 @@ namespace VFRZInstancing
             //calculate how many tiles will be drawn.;
             List<int> visibleRow = new List<int>();
             visibleInstances = CalcVisibleTiles(drawingArea.X, drawingArea.Y, tileCountX, tileCountY, _size.X, _size.Y, visibleRow);
-            
 
             _effect.Parameters["StartPosX"].SetValue(drawingArea.X);
             _effect.Parameters["StartPosY"].SetValue(drawingArea.Y);
@@ -369,16 +368,16 @@ namespace VFRZInstancing
        List<int> visibleRow)
         {
             int visibleIndex = 0;
+            //TODO only odd number if map is a the bottom and its an even number flicker
             Point start = get_start_point(new Point(startPosX, startPosY), out int outside);
+            Debug.WriteLine("start:" + start);
 
-            if (outside == 0) {
-                visibleRow.Add(0);
-            }
-
+            visibleRow.Add(0);
             for (int i = 0; i < rows; i++)
             {
                 int currentRow = i / 2;
-                Point pos = new Point(start.X - i % 2 - currentRow, start.Y + currentRow);
+                Point current_start = new Point(start.X - i % 2 - currentRow, start.Y + currentRow);
+                Point pos = current_start;
                 int verticalTiles = columns;
 
 
@@ -404,34 +403,30 @@ namespace VFRZInstancing
                 if (pos.X >= mapSizeX)
                 {
                     int tilesOverflow = pos.X - mapSizeX;
-                    pos.Y -= tilesOverflow + 1;
-                    pos.X -= tilesOverflow + 1;
+                    pos.Y -= tilesOverflow; 
+                    pos.X -= tilesOverflow;
+                    verticalTiles -= tilesOverflow;
                 }
 
                 if (pos.Y >= mapSizeY)
                 {
-                    int tilesOverflow = pos.Y - mapSizeY;
-                    pos.Y -= tilesOverflow + 1;
-                    pos.X -= tilesOverflow + 1;
+                    int tilesOverflow = pos.Y - (mapSizeY);
+                    pos.X -= tilesOverflow;
+                    pos.Y -= tilesOverflow;
+                    verticalTiles -= tilesOverflow;
                 }
 
-                if(pos.X < pos.Y)
+                if (verticalTiles <= 0)
                 {
-                    verticalTiles = pos.X + 1;
+                    continue;
                 }
-                else
-                {
-                    verticalTiles = pos.Y + 1;
-                }
-
-
-
-                if (verticalTiles < 0)
-                {
-                    break;
-                }
+                //Debug.WriteLine("verticalTiles: " + verticalTiles + "       current_start:" + current_start);
                 visibleIndex += verticalTiles;
                 visibleRow.Add(visibleIndex);
+                if (visibleIndex == 15)
+                {
+
+                }
             }
             _rows.SetData(visibleRow.ToArray());
             return visibleIndex;

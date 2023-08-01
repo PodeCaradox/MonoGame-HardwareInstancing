@@ -15,6 +15,7 @@ namespace VFRZInstancing
 
         internal static void testc(int StartPosX, int StartPosY, int Columns, int Rows, int MapSizeX, int MapSizeY, int[] RowsIndex)
         {
+            int dummy123 = 0;
             ShaderInCSharpImpl.StartPosX = StartPosX;
             ShaderInCSharpImpl.StartPosY = StartPosY;
             ShaderInCSharpImpl.Columns = Columns;
@@ -28,7 +29,7 @@ namespace VFRZInstancing
             {
                 for (int globalIDX = 0; globalIDX < Columns; globalIDX++)
                 {
-
+                    
 
                     Point index = new Point(StartPosX, StartPosY);
                     int column = globalIDX;
@@ -42,14 +43,18 @@ namespace VFRZInstancing
                     index.Y += column;
                     index.X += column;
 
-
                     if (index.X < 0 || index.Y < 0 || index.Y >= MapSizeY || index.X >= MapSizeX)
                     {
                         continue;
                     }
 
-                    visibleIndex = calc_visible_index(index, actual_row_start);
 
+                    visibleIndex = calc_visible_index(index, actual_row_start);
+                    if(dummy123 != visibleIndex)
+                    {
+
+                    }
+                    dummy123++;
                     Debug.WriteLine(visibleIndex + "        " + index);
                 }
             }
@@ -68,6 +73,7 @@ namespace VFRZInstancing
 
         private static int calculate_rows(Point start, int mapSizeX)
         {
+            //35 , 1
             int rows = 0;
             if (start.Y < start.X)
             {

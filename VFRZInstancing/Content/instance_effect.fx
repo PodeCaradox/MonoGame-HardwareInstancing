@@ -103,7 +103,6 @@ int2 calc_start_point_outside_map(int2 start_pos) {
 
 int2 get_start_point(int2 start_pos) {
 	int outside = is_outside_of_map(start_pos);
-	int2 start = start_pos;
 	if (outside == 1) { //calculate the starting point when outside of map on the right.
 		return calc_start_point_outside_map(start_pos);
 	}
