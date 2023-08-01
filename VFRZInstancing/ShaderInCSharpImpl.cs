@@ -10,13 +10,26 @@ namespace VFRZInstancing
 {
     internal static class ShaderInCSharpImpl
     {
-        internal static void testc(int StartPosX, int StartPosY, int Columns, int Rows, int MapSizeX, int MapSizeY)
+        private static int StartPosX, StartPosY, Columns, Rows, MapSizeX, MapSizeY;
+        private static int[] RowsIndex;
+
+        internal static void testc(int StartPosX, int StartPosY, int Columns, int Rows, int MapSizeX, int MapSizeY, int[] RowsIndex)
         {
+            ShaderInCSharpImpl.StartPosX = StartPosX;
+            ShaderInCSharpImpl.StartPosY = StartPosY;
+            ShaderInCSharpImpl.Columns = Columns;
+            ShaderInCSharpImpl.Rows = Rows;
+            ShaderInCSharpImpl.MapSizeX = MapSizeX;
+            ShaderInCSharpImpl.MapSizeY = MapSizeY;
+            ShaderInCSharpImpl.RowsIndex = RowsIndex;
+
             int visibleIndex = 0;
             for (int globalIDY = 0; globalIDY < Rows; globalIDY++)
             {
                 for (int globalIDX = 0; globalIDX < Columns; globalIDX++)
                 {
+
+
                     Point index = new Point(StartPosX, StartPosY);
                     int column = globalIDX;
                     int row = globalIDY;
@@ -34,157 +47,142 @@ namespace VFRZInstancing
                     {
                         continue;
                     }
-                    visibleIndex = 0;
 
-                    //check if we are outside with the Top Right Point of the camera
-                    Point start = new Point(StartPosX, StartPosY);
-                    int outside = 1;
-                    for (int i = 0; i < Columns; i++)
-                    {
-                        start.X++;
-                        start.Y++;
-                        if (start.X >= 0 && start.Y >= 0 && start.Y < MapSizeY && start.X < MapSizeX)
-                        {
-                            outside = 0;
-                            break;
-                        }
-                    }
+                    visibleIndex = calc_visible_index(index, actual_row_start);
 
-                    //calculate the starting point when outside of map on the right.
-                    if (outside == 1)
-                    {
-                        //above map on the righ side
-                        if (StartPosX + StartPosY < MapSizeX)
-                        {
-                            Point left = new Point(StartPosX - Rows, StartPosY + Rows);
-                            left.X += left.Y;
-                            left.Y -= left.Y;
-
-                            Point righ_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
-                            //check if we are passed the last Tile for MapSizeX with the Camera
-                            if(righ_bottom_screen.X + righ_bottom_screen.Y > MapSizeX)
-                            {
-                                start = new Point(MapSizeX - 1, 0);
-                            }
-                            else
-                            {
-                                //we are above the Last Tile so x < MapSizeX for Camera right bottom Position
-                                righ_bottom_screen.X += righ_bottom_screen.Y;
-                                righ_bottom_screen.Y -= righ_bottom_screen.Y;
-                                start = righ_bottom_screen;
-                            }
-
-                            int difference = start.X - left.X;
-                            difference += difference % 2;
-                            difference /= 2;
-                            start.X -= difference;
-                            start.Y -= difference;
-                        }
-                        else // underneath map
-                        {
-                            int to_the_left = StartPosX - MapSizeX;
-                            start = new Point(StartPosX - to_the_left, StartPosY + to_the_left);
-                        }
-
-                    }//inside the map
-                    else
-                    {
-                        start = new Point(StartPosX, StartPosY);
-                    }
-
-                    //Calc how many rows are allready drawn behind us, until camera view end on the right side
-                    int rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
-
-                    //this will be a array in the shader
-                    //calculate how many tiles are in each Row will be drawn
-                    for (int i = 0; i < rows_behind; i++)
-                    {
-                        int current_row = i / 2;
-                        Point pos = new Point(start.X - i % 2 - current_row, start.Y + current_row);
-                        int vertical_tiles = Columns;
-                        if (pos.X < 0 || pos.Y < 0)
-                        {
-                            if (pos.X < pos.Y)
-                            {
-                                vertical_tiles += pos.X;
-                                pos.Y -= pos.X;
-                                pos.X = 0;
-                            }
-                            else
-                            {
-                                vertical_tiles += pos.Y;
-                                pos.X -= pos.Y;
-                                pos.Y = 0;
-                            }
-                        }
-
-                        pos.X += vertical_tiles;
-                        pos.Y += vertical_tiles;
-
-                        if (pos.X >= MapSizeX)
-                        {
-                            int tiles_overflow = pos.X - MapSizeX;
-                            vertical_tiles -= tiles_overflow;
-                            pos.Y -= tiles_overflow;
-
-                        }
-
-                        if (pos.Y >= MapSizeY)
-                        {
-                            int tiles_overflow = pos.Y - MapSizeY;
-                            vertical_tiles -= tiles_overflow;
-                        }
-                        visibleIndex += vertical_tiles;
-
-                    }
-
-                    //get all Colums to the actual Index
-                    int columns = GetColumnsUntilBorder(index);
-
-                    //get correct Index if the Camera is inside of the Map so we subtract all Colums above of the camera view
-                    if (actual_row_start.X >= 0 && actual_row_start.Y >= 0)
-                    {
-                        columns -= GetColumnsUntilBorder(actual_row_start);
-                    }
-
-                    visibleIndex += columns;
-                    //Debug.WriteLine(visibleIndex + "        " + rows_behind + "        " + start);
+                    Debug.WriteLine(visibleIndex + "        " + index);
                 }
             }
             Debug.WriteLine(visibleIndex + " In Shader calculated");
 
         }
 
-        private static int GetColumnsUntilBorder(Point index)
+
+
+        private static int is_in_map_bounds(Point map_position)
+        {
+            if (map_position.X >= 0 && map_position.Y >= 0 && map_position.Y < MapSizeY && map_position.X < MapSizeX) { return 1; }
+
+            return 0;
+        }
+
+        private static int calculate_rows(Point start, int mapSizeX)
+        {
+            int rows = 0;
+            if (start.Y < start.X)
+            {
+                rows = (mapSizeX - 1) - (start.X - start.Y);
+            }
+            else
+            {
+                rows = (mapSizeX - 1) + (start.Y - start.X);
+
+            }
+            if (rows < 0) return 0;
+
+            return rows;
+            
+        }
+
+        private static int get_columns_until_border(Point index)
         {
             if (index.X < index.Y)
             {
                 return index.X;
             }
-
             return index.Y;
-
         }
 
-        private static int CalculateRows(Point start, int mapSizeX)
+        private static int is_outside_of_map(Point start_pos)
         {
-            int rows;
-            //Check if we are near y axis or x axis he lower one is the number of rows. and for y > x we add mapSizeX
-            if (start.Y < start.X)
+            Point pos = start_pos;
+            for (int i = 0; i < Columns; i += 1)
             {
-                start.X -= start.Y;
-                start.Y -= start.Y;
-                rows = mapSizeX - start.X;
+                pos.X += 1;
+                pos.Y += 1;
+                if (is_in_map_bounds(pos) == 1)
+                {
+                    return 0;
+                }
             }
-            else
+            return 1;
+        }
+
+        private static Point calc_start_point_outside_map(Point start_pos)
+        {
+            Point start = start_pos;
+            //above right side of map
+            if (StartPosX + StartPosY < MapSizeX)
             {
-                start.Y -= start.X;
-                start.X -= start.X;
-                rows = mapSizeX + start.Y;
+                Point left = new Point(StartPosX - Rows, StartPosY + Rows);
+                left.X += left.Y;
+                left.Y -= left.Y;
+
+                Point right_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
+                //check if we are passed the last Tile for MapSizeX with the Camera
+                if (right_bottom_screen.X + right_bottom_screen.Y > MapSizeX)
+                {
+                    start = new Point(MapSizeX, 0);
+
+                }
+                else
+                {
+                    //we are above the Last Tile so x < MapSizeX for Camera right bottom Position
+                    right_bottom_screen.X += right_bottom_screen.Y;
+                    right_bottom_screen.Y -= right_bottom_screen.Y;
+                    start = right_bottom_screen;
+                }
+
+                //difference is all tiles on the x axis and because we calculate here x,y different to Isomectric View we need to divide by 2 and for odd number add 1 so % 2
+                int difference = start.X - left.X;
+                difference += difference % 2;
+                difference /= 2;
+                start.X -= difference;
+                start.Y -= difference;
+                return start;
             }
+            //underneath right side of map
+            int to_the_left = StartPosX - MapSizeX;
+            return new Point(StartPosX - to_the_left, StartPosY + to_the_left);
+        }
+
+        private static Point get_start_point(Point start_pos)
+        {
+            int outside = is_outside_of_map(start_pos);
+            if (outside == 1)
+            { //calculate the starting point when outside of map on the right.
+                return calc_start_point_outside_map(start_pos);
+            }
+            //inside the map
+            return new Point(StartPosX, StartPosY);
+        }
 
 
-            return rows;
+        private static int calc_visible_index(Point index, Point actual_row_start)
+        {
+            int visible_index = 0;
+
+            Point start = get_start_point(new Point(StartPosX, StartPosY));
+            int dummy = calculate_rows(index, MapSizeX);
+            int dummy1 = calculate_rows(start, MapSizeX);
+
+            int rows_behind = dummy - dummy1;
+
+           
+           visible_index = RowsIndex[rows_behind];
+            
+
+
+
+            //index in current column
+            int columns = get_columns_until_border(index);
+            if (actual_row_start.X >= 0 && actual_row_start.Y >= 0)
+            {
+                columns -= get_columns_until_border(actual_row_start);
+            }
+
+            visible_index += columns;
+            return visible_index;
         }
     }
 }

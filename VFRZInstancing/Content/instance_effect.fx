@@ -14,24 +14,40 @@ struct Tile
 // Compute Shader
 //=============================================================================
 #define GroupSize 32
-int CalculateRows(int2 start, int mapSizeX)
-{
-	int rows;
+
+StructuredBuffer<Tile> AllTiles;
+RWStructuredBuffer<Tile> VisibleTiles;
+RWStructuredBuffer<int> RowsIndex;
+int StartPosX;
+int StartPosY;
+int Columns;
+int Rows;
+int MapSizeX;
+int MapSizeY;
+
+int is_in_map_bounds(int2 map_position) {
+	if (map_position.x >= 0 && map_position.y >= 0 && map_position.y < MapSizeY && map_position.x < MapSizeX) { return 1; }
+
+	return 0;
+}
+
+int calculate_rows(int2 start, int mapSizeX) {
+	int rows = 0;
+
 	if (start.y < start.x)
 	{
-		rows = mapSizeX - (start.x - start.y);
+		rows = (mapSizeX - 1) - (start.x - start.y);
 	}
-	else
-	{
-		rows = mapSizeX + (start.y - start.x);
+	else {
+		rows = (mapSizeX - 1) + (start.y - start.x);
 	}
 
+	if (rows < 0) return 0;
 
 	return rows;
 }
 
-int GetColumnsUntilBorder(int2 index)
-{
+int get_columns_until_border(int2 index) {
 	if (index.x < index.y)
 	{
 		return index.x;
@@ -39,14 +55,85 @@ int GetColumnsUntilBorder(int2 index)
 	return index.y;
 }
 
-StructuredBuffer<Tile> AllTiles;
-RWStructuredBuffer<Tile> VisibleTiles;
-int StartPosX;
-int StartPosY;
-int Columns;
-int Rows;
-int MapSizeX;
-int MapSizeY;
+int is_outside_of_map(int2 start_pos) {
+	int2 pos = start_pos;
+	for (int i = 0; i < Columns; i += 1) {
+		pos.x += 1;
+		pos.y += 1;
+		if (is_in_map_bounds(pos) == 1) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int2 calc_start_point_outside_map(int2 start_pos) {
+	int2 start = start_pos;
+	//above right side of map
+	if (StartPosX + StartPosY < MapSizeX) {
+		int2 left = int2(StartPosX - Rows, StartPosY + Rows);
+		left.x += left.y;
+		left.y -= left.y;
+
+		int2 right_bottom_screen = int2(StartPosX + Columns, StartPosY + Columns);
+		//check if we are passed the last Tile for MapSizeX with the Camera
+		if (right_bottom_screen.x + right_bottom_screen.y > MapSizeX) {
+			start = int2(MapSizeX, 0);
+
+		}
+		else {
+			//we are above the Last Tile so x < MapSizeX for Camera right bottom Position
+			right_bottom_screen.x += right_bottom_screen.y;
+			right_bottom_screen.y -= right_bottom_screen.y;
+			start = right_bottom_screen;
+		}
+
+		//difference is all tiles on the x axis and because we calculate here x,y different to Isomectric View we need to divide by 2 and for odd number add 1 so % 2
+		int difference = start.x - left.x;
+		difference += difference % 2;
+		difference /= 2;
+		start.x -= difference;
+		start.y -= difference;
+		return start;
+	}
+	//underneath right side of map
+	int to_the_left = StartPosX - MapSizeX;
+	return int2(StartPosX - to_the_left, StartPosY + to_the_left);
+}
+
+int2 get_start_point(int2 start_pos) {
+	int outside = is_outside_of_map(start_pos);
+	int2 start = start_pos;
+	if (outside == 1) { //calculate the starting point when outside of map on the right.
+		return calc_start_point_outside_map(start_pos);
+	}
+	//inside the map
+	return int2(StartPosX, StartPosY);
+}
+
+int calc_visible_index(int2 index, int2 actual_row_start) {
+	int visible_index = 0;
+
+	int2 start = get_start_point(int2(StartPosX, StartPosY));
+
+	int rows_behind = calculate_rows(index, MapSizeX) - calculate_rows(start, MapSizeX);
+
+
+	visible_index = RowsIndex[rows_behind];
+	
+
+	//index in current column
+	int columns = get_columns_until_border(index);
+	if (actual_row_start.x >= 0 && actual_row_start.y >= 0) {
+		columns -= get_columns_until_border(actual_row_start);
+	}
+
+	visible_index += columns;
+	return visible_index;
+}
+
+
+
 
 [numthreads(GroupSize, GroupSize, 1)]
 void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
@@ -69,116 +156,10 @@ void InstancingCS(uint3 localID : SV_GroupThreadID, uint3 groupID : SV_GroupID,
 		return;
 	}
 
-	//calc index for visible tiles array start
-	int visibleIndex = 0;
-	int rows_behind;
-	int2 start = int2(StartPosX, StartPosY);
-	int outside = 1;
-	//check if we are outside with the Top Right Point of the camera
-	for (int j = 0; j < Columns; j++)
-	{
-		start.x++;
-		start.y++;
-		if (start.x >= 0 && start.y >= 0 && start.y < MapSizeY && start.x < MapSizeX)
-		{
-			outside = 0;
-			break;
-		}
-	}
-
-	//calculate the starting point when outside of map on the right.
-	if (outside == 1)
-	{
-		//above map
-		if (StartPosX + StartPosY < MapSizeX)
-		{
-			int2 left = int2(StartPosX - Rows, StartPosY + Rows);
-			left.x += left.y;
-			left.y -= left.y;
-			
-			int2 righ_bottom_screen = int2(StartPosX + Columns, StartPosY + Columns);
-			//check if we are passed the last Tile for MapSizeX with the Camera
-			if (righ_bottom_screen.x + righ_bottom_screen.y > MapSizeX)
-			{
-				start = int2(MapSizeX - 1, 0);
-			}
-			else
-			{
-				//we are above the Last Tile so x < MapSizeX for Camera right bottom Position
-				righ_bottom_screen.x += righ_bottom_screen.y;
-				righ_bottom_screen.y -= righ_bottom_screen.y;
-				start = righ_bottom_screen;
-			}
-
-			//difference is all tiles on the x axis and because we calculate here x,y different to Isomectric View we need to divide by 2 and for odd number add 1 so % 2
-			int difference = start.x - left.x;
-			difference += difference % 2;
-			difference /= 2;
-			start.x -= difference;
-			start.y -= difference;
-		}
-		else // underneath map
-		{
-			int to_the_left = StartPosX - MapSizeX;
-			start = int2(StartPosX - to_the_left, StartPosY + to_the_left);
-		}
-	}//inside the map
-	else
-	{
-		start = int2(StartPosX, StartPosY);
-	}
-
-	//Calc how many rows are allready drawn behind us, until camera view end on the right side
-	rows_behind = CalculateRows(index, MapSizeX) - CalculateRows(start, MapSizeX);
-
-	//this will be a array in the shader later
-	//calculate how many tiles are in each Row will be drawn so we ge Correct Array index
-	for (int i = 0; i < rows_behind; i++) {
-		int current_row = i / 2;
-		int2 pos = int2(start.x - i % 2 - current_row, start.y + current_row);
-		int vertical_tiles = Columns;
-		if (pos.x < 0 || pos.y < 0) {
-			if (pos.x < pos.y) {
-				vertical_tiles += pos.x;
-				pos.y -= pos.x;
-				pos.x = 0;
-			}
-			else {
-				vertical_tiles += pos.y;
-				pos.x -= pos.y;
-				pos.y = 0;
-			}
-		}
-		pos.x += vertical_tiles;
-		pos.y += vertical_tiles;
-
-		if (pos.x >= MapSizeX) {
-			int tiles_overflow = pos.x - MapSizeX;   
-			vertical_tiles -= tiles_overflow;
-			pos.y -= tiles_overflow;
-		}
-
-		if (pos.y >= MapSizeY) {
-			int tiles_overflow = pos.y - MapSizeY;
-			vertical_tiles -= tiles_overflow;
-		}
-		visibleIndex += vertical_tiles;
-	}
-
-	//get all Colums to the actual Index
-	int columns = GetColumnsUntilBorder(index);
-
-	//get correct Index if the Camera is inside of the Map so we subtract all Colums above of the camera view
-	if (actual_row_start.x >= 0 && actual_row_start.y >= 0)
-	{
-		columns -= GetColumnsUntilBorder(actual_row_start);
-	}
-
-	visibleIndex += columns;
-	//calc index for visible tiles array end
+	int visible_index = calc_visible_index(index, actual_row_start);
 
 
-	VisibleTiles[visibleIndex] = AllTiles[index.y * MapSizeX + index.x];
+	VisibleTiles[visible_index] = AllTiles[index.y * MapSizeX + index.x];
 }
 
 

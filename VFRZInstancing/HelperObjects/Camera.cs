@@ -9,7 +9,7 @@ namespace VFRZInstancing.HelperObjects;
 internal class Camera
 {
     private static float MaxZoomOut = 0.125f;
-    private float CameraSpeed = 3.5f;
+    private float CameraSpeed = 0.5f;
     private Vector2 CameraPosition;
     private float PreviousMouseWheelValue;
     private float Zoom = 1;

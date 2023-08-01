@@ -27,6 +27,8 @@ namespace VFRZInstancing
 {
     public class TileMap : DrawableGameComponent
     {
+        private static int StartPosX, StartPosY, Columns, Rows, MapSizeX, MapSizeY;
+
         #region FIELDS
 
         public static SamplerState SS_PointBorder = new SamplerState() { Filter = TextureFilter.Point, AddressU = TextureAddressMode.Clamp, AddressV = TextureAddressMode.Clamp };
@@ -39,6 +41,7 @@ namespace VFRZInstancing
 
         private StructuredBuffer _allTiles;
         private StructuredBuffer _visibleTiles;
+        private StructuredBuffer _rows;
         private VertexBuffer _geometryBuffer;
         private Instances[] _instances;
         private Point _camera_point;
@@ -102,8 +105,8 @@ namespace VFRZInstancing
             _raster.CullMode = CullMode.CullCounterClockwiseFace;
             _raster.DepthClipEnable = true;
             var bounds = new Rectangle(0, 0, width, height);
-
-            _camera = new Camera(new Vector2(0, 0), bounds);
+            var world_pos = MapToScreenPos(_size);
+            _camera = new Camera(new Vector2(0, world_pos.Y/2), bounds);
         }
 
         #endregion
@@ -222,6 +225,7 @@ namespace VFRZInstancing
             //the instances can change so we have a StructuredBuffer buffer
             _allTiles = new StructuredBuffer(GraphicsDevice, typeof(Instances), InstanceCount, BufferUsage.WriteOnly, ShaderAccess.Read);
             _visibleTiles = new StructuredBuffer(GraphicsDevice, typeof(Instances), InstanceCount, BufferUsage.WriteOnly, ShaderAccess.ReadWrite);
+            _rows = new StructuredBuffer(GraphicsDevice, typeof(int), 4 * 10000, BufferUsage.WriteOnly, ShaderAccess.ReadWrite);
             InitializeInstances();
             _allTiles.SetData(_instances);
 
@@ -306,23 +310,38 @@ namespace VFRZInstancing
 
             GraphicsDevice.SetVertexBuffer(_geometryBuffer);
 
-            //dont use DrawInsttanced its to slow for Sprintes insancing see: https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau
+            //dont use DrawInstanced its slower for Sprintes instancing see: https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau
             GraphicsDevice.DrawPrimitives(PrimitiveType.TriangleList, 0, 2 * visibleInstances);
 
         }
 
         private void ComputeCulling()
         {
+
             var drawingArea = _camera.CalculateDrawingArea(_tileSize);
-            //calculate how many tiles will be drawn.;
             int tileCountX = drawingArea.Height + (_computeGroupSize - drawingArea.Height % _computeGroupSize);
             int tileCountY = drawingArea.Width + (_computeGroupSize - drawingArea.Width % _computeGroupSize);
+
+
+            StartPosX = drawingArea.X;
+            StartPosY = drawingArea.Y;
+            Columns = tileCountX;
+            Rows = tileCountY / 2;
+            MapSizeX = _size.X;
+            MapSizeY = _size.Y;
+
+            //calculate how many tiles will be drawn.;
+            List<int> visibleRow = new List<int>();
+            visibleInstances = CalcVisibleTiles(drawingArea.X, drawingArea.Y, tileCountX, tileCountY, _size.X, _size.Y, visibleRow);
+            
+
             _effect.Parameters["StartPosX"].SetValue(drawingArea.X);
             _effect.Parameters["StartPosY"].SetValue(drawingArea.Y);
             _effect.Parameters["MapSizeX"].SetValue(_size.X);
             _effect.Parameters["MapSizeY"].SetValue(_size.Y);
             _effect.Parameters["AllTiles"].SetValue(_allTiles);
             _effect.Parameters["VisibleTiles"].SetValue(_visibleTiles);
+            _effect.Parameters["RowsIndex"].SetValue(_rows);
             _effect.Parameters["Columns"].SetValue(tileCountX);
             _effect.Parameters["Rows"].SetValue(tileCountY / 2);
 
@@ -330,125 +349,165 @@ namespace VFRZInstancing
             GraphicsDevice.DispatchCompute(tileCountX / _computeGroupSize, tileCountY / _computeGroupSize, 1);
 
             _camera_point = new Point(drawingArea.X + drawingArea.Width, drawingArea.Y);
-            visibleInstances = CalcVisibleTiles(drawingArea.X, drawingArea.Y, tileCountX, tileCountY, _size.X, _size.Y);
+            
 
 
             if(_debug_shader)
-                ShaderInCSharpImpl.testc(drawingArea.X, drawingArea.Y, tileCountX, tileCountY, _size.X, _size.Y);
+                ShaderInCSharpImpl.testc(drawingArea.X, drawingArea.Y, tileCountX, tileCountY / 2, _size.X, _size.Y, visibleRow.ToArray());
         }
+
+
         #endregion
 
-
-        private int CalcVisibleTiles(int StartPosX, int StartPosY, int Columns, int Rows, int MapSizeX, int MapSizeY)
+        public int CalcVisibleTiles(
+       int startPosX,
+       int startPosY,
+       int columns,
+       int rows,
+       int mapSizeX,
+       int mapSizeY,
+       List<int> visibleRow)
         {
             int visibleIndex = 0;
-            Point start = new Point(StartPosX, StartPosY);
-            int outside = 1;
-            for (int i = 0; i < Columns; i++)
-            {
-                start.X++;
-                start.Y++;
-                if (start.X >= 0 && start.Y >= 0 && start.Y < MapSizeY && start.X < MapSizeX)
-                {
-                    outside = 0;
-                    break;
-                }
+            Point start = get_start_point(new Point(startPosX, startPosY), out int outside);
+
+            if (outside == 0) {
+                visibleRow.Add(0);
             }
 
-            //calculate the starting point when outside of map on the right.
-            if (outside == 1)
+            for (int i = 0; i < rows; i++)
             {
-                //above map
-                if (StartPosX + StartPosY < MapSizeX)
-                {
-                    Point left = new Point(StartPosX - Rows, StartPosY + Rows);
-                    left.X += left.Y;
-                    left.Y -= left.Y;
-
-                    Point righ_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
-                    //check if we are passed the last Tile for MapSizeX with the Camera
-                    if (righ_bottom_screen.X + righ_bottom_screen.Y > MapSizeX)
-                    {
-                        start = new Point(MapSizeX - 1, 0);
-                    }
-                    else
-                    {//we have not pass the Last Tile so x < MapSizeX for Camera right bottom Position
-                        righ_bottom_screen.X += righ_bottom_screen.Y;
-                        righ_bottom_screen.Y -= righ_bottom_screen.Y;
-                        start = righ_bottom_screen;
-                    }
-
-                    //difference is all tiles on the x axis and because we calculate here x,y different to Isomectric Coordinates we need to divide by 2 and for odd number add 1 so % 2
-                    int difference = start.X - left.X;
-                    difference += difference % 2;
-                    difference /= 2;
-                    start.X -= difference;
-                    start.Y -= difference;
-                }
-                else // underneath map
-                {
-                    int to_the_left = StartPosX - MapSizeX;
-                    start = new Point(StartPosX - to_the_left, StartPosY + to_the_left);
-                }
-
-            }//inside the map
-            else
-            {
-                start = new Point(StartPosX, StartPosY);
-            }
+                int currentRow = i / 2;
+                Point pos = new Point(start.X - i % 2 - currentRow, start.Y + currentRow);
+                int verticalTiles = columns;
 
 
-            //this will be a array in the shader later
-            //calculate how many tiles are in each Row will be drawn so we ge Correct Array index
-            for (int i = 0; i < Rows; i++)
-            {
-                int current_row = i / 2;
-                Point pos = new Point(start.X - i % 2 - current_row, start.Y + current_row);
-                int vertical_tiles = Columns;
-                // How many Tiles can be ignored because above Map
                 if (pos.X < 0 || pos.Y < 0)
                 {
                     if (pos.X < pos.Y)
                     {
-                        vertical_tiles += pos.X;
+                        verticalTiles += pos.X;
                         pos.Y -= pos.X;
                         pos.X = 0;
                     }
                     else
                     {
-                        vertical_tiles += pos.Y;
+                        verticalTiles += pos.Y;
                         pos.X -= pos.Y;
                         pos.Y = 0;
                     }
                 }
 
-                pos.X += vertical_tiles;
-                pos.Y += vertical_tiles;
+                pos.X += verticalTiles;
+                pos.Y += verticalTiles;
 
-                // How many Tiles can be ignored because overflow the Map
-                if (pos.X >= MapSizeX)
+                if (pos.X >= mapSizeX)
                 {
-                    int tiles_overflow = pos.X - MapSizeX;
-                    vertical_tiles -= tiles_overflow;
-                    pos.Y -= tiles_overflow;
-
+                    int tilesOverflow = pos.X - mapSizeX;
+                    pos.Y -= tilesOverflow + 1;
+                    pos.X -= tilesOverflow + 1;
                 }
 
-                if (pos.Y >= MapSizeY)
+                if (pos.Y >= mapSizeY)
                 {
-                    int tiles_overflow = pos.Y - MapSizeY;
-                    vertical_tiles -= tiles_overflow;
+                    int tilesOverflow = pos.Y - mapSizeY;
+                    pos.Y -= tilesOverflow + 1;
+                    pos.X -= tilesOverflow + 1;
                 }
 
-                //When verticaliles get negativ just end.
-                if (vertical_tiles < 0) break;
-                visibleIndex += vertical_tiles;
+                if(pos.X < pos.Y)
+                {
+                    verticalTiles = pos.X + 1;
+                }
+                else
+                {
+                    verticalTiles = pos.Y + 1;
+                }
 
+
+
+                if (verticalTiles < 0)
+                {
+                    break;
+                }
+                visibleIndex += verticalTiles;
+                visibleRow.Add(visibleIndex);
             }
-           if (_debug_shader) Debug.WriteLine(visibleIndex + " In For loop calculated");
+            _rows.SetData(visibleRow.ToArray());
             return visibleIndex;
         }
 
+        int is_in_map_bounds(Point map_position)
+        {
+            if (map_position.X >= 0 && map_position.Y >= 0 && map_position.Y < MapSizeY && map_position.X < MapSizeX) { return 1; }
+
+            return 0;
+        }
+
+
+        int is_outside_of_map(Point start_pos)
+        {
+            Point pos = start_pos;
+            for (int i = 0; i < Columns; i += 1)
+            {
+                pos.X += 1;
+                pos.Y += 1;
+                if (is_in_map_bounds(pos) == 1)
+                {
+                    return 0;
+                }
+            }
+            return 1;
+        }
+
+        Point calc_start_point_outside_map(Point start_pos)
+        {
+            Point start;
+            //above right side of map
+            if (StartPosX + StartPosY < MapSizeX)
+            {
+                Point left = new Point(StartPosX - Rows, StartPosY + Rows);
+                left.X += left.Y;
+                left.Y -= left.Y;
+
+                Point right_bottom_screen = new Point(StartPosX + Columns, StartPosY + Columns);
+                //check if we are passed the last Tile for MapSizeX with the Camera
+                if (right_bottom_screen.X + right_bottom_screen.Y > MapSizeX)
+                {
+                    start = new Point(MapSizeX, 0);
+
+                }
+                else
+                {
+                    //we are above the Last Tile so x < MapSizeX for Camera right bottom Position
+                    right_bottom_screen.X += right_bottom_screen.Y;
+                    right_bottom_screen.Y -= right_bottom_screen.Y;
+                    start = right_bottom_screen;
+                }
+
+                //difference is all tiles on the x axis and because we calculate here x,y different to Isomectric View we need to divide by 2 and for odd number add 1 so % 2
+                int difference = start.X - left.X;
+                difference += difference % 2;
+                difference /= 2;
+                start.X -= difference;
+                start.Y -= difference;
+                return start;
+            }
+            //underneath right side of map
+            int to_the_left = StartPosX - MapSizeX;
+            return new Point(StartPosX - to_the_left, StartPosY + to_the_left);
+        }
+
+        Point get_start_point(Point start_pos, out int outside)
+        {
+            outside = is_outside_of_map(start_pos);
+            if (outside == 1)
+            { //calculate the starting point when outside of map on the right.
+                return calc_start_point_outside_map(start_pos);
+            }
+            //inside the map
+            return new Point(StartPosX, StartPosY);
+        }
 
 
     }
